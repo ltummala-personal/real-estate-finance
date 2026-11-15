@@ -60,7 +60,7 @@ jobs:
   build:
     name: Build and push image
     needs: test
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_TARGET == 'vm'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -98,6 +98,31 @@ jobs:
           docker run --rm "$IMAGE" tesseract --version
           docker run --rm -e DJANGO_SECRET_KEY=image-check-only-key-0123456789abcdefghijklmn "$IMAGE" \
             python -c "import django, pdfplumber, pytesseract, openpyxl; print('imports ok')"
+
+  deploy-cloudflare:
+    name: Deploy to Cloudflare Containers
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_TARGET == 'cloudflare'
+    runs-on: ubuntu-24.04
+    environment:
+      name: cloudflare
+      url: ${{ vars.APP_URL }}
+    concurrency:
+      group: deploy-cloudflare
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: wrangler deploy (builds the Docker image and rolls out the container)
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Smoke tests against the public URL
+        run: bash scripts/smoke_test.sh "${{ vars.APP_URL }}"
 
   deploy-staging:
     name: Deploy to staging

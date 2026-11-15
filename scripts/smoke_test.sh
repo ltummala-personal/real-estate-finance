@@ -27,7 +27,7 @@ expect "$BASE_URL/admin/login/" 200
 expect "$BASE_URL/" 302
 expect "$BASE_URL/reports/" 302
 expect "$BASE_URL/documents/upload/" 302
-expect "http://$HOST/healthz/" "301|302|307|308"
+expect "http://$HOST/accounts/login/" "301|302|307|308"
 
 headers=$(curl -sSI --max-time 20 "$BASE_URL/accounts/login/")
 grep -qi '^strict-transport-security:' <<<"$headers" || { echo "FAIL missing HSTS header"; exit 1; }

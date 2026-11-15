@@ -96,6 +96,13 @@
   <a class="sub" href="#cloud-testing">17.9 Testing in the cloud</a>
   <a class="sub" href="#cloud-ops">17.10 Rollback, backups, ops</a>
   <a class="sub" href="#cloud-troubleshoot">17.11 Troubleshooting</a>
+  <a href="#cloudflare">18. Cloudflare deployment</a>
+  <a class="sub" href="#cf-why">18.1 Why Containers (not Pages)</a>
+  <a class="sub" href="#cf-arch">18.2 Architecture</a>
+  <a class="sub" href="#cf-steps">18.3 Step-by-step setup</a>
+  <a class="sub" href="#cf-pipeline">18.4 Deployment pipeline</a>
+  <a class="sub" href="#cf-test">18.5 Testing &amp; operations</a>
+  <a class="sub" href="#cf-troubleshoot">18.6 Troubleshooting</a>
 </nav>
 
 <main>
@@ -1078,6 +1085,8 @@ Get-Content -Raw "$HOME\.ssh\ref_deploy_production" | gh secret set SSH_PRIVATE_
 ssh-keyscan -t ed25519 &lt;production-ip&gt; | gh secret set SSH_KNOWN_HOSTS --env production --repo $repo
 gh variable set APP_URL --env production --repo $repo --body "https://finance.example.com"
 
+gh variable set DEPLOY_TARGET --repo $repo --body "vm"     # enables the build/deploy jobs for VM servers
+
 gh secret list --env staging --repo $repo
 gh variable list --env production --repo $repo</pre>
   <p>Then in the browser: <strong>GitHub → repository → Settings → Environments → production</strong>:</p>
@@ -1178,6 +1187,141 @@ df -h /</pre>
     <tr><td>403 CSRF failure on login</td><td><code>DJANGO_CSRF_TRUSTED_ORIGINS</code> missing <code>https://</code> domain</td><td>Fix <code>.env</code> and restart web.</td></tr>
     <tr><td>Uploads time out</td><td>Large scanned PDFs (OCR)</td><td>Gunicorn timeout is 180 s; split files or move extraction to a background worker (see §15).</td></tr>
     <tr><td><code>!reset</code> not recognised</td><td>Old Docker Compose</td><td>Upgrade to Compose v2.24+ (<code>curl -fsSL https://get.docker.com | sh</code>).</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ 18 -->
+<section id="cloudflare">
+  <h2>18. Cloudflare deployment (Workers + Containers)</h2>
+
+  <h3 id="cf-why">18.1 Why Cloudflare Containers, not Pages</h3>
+  <p>
+    The error <code>Could not detect a directory containing static files (e.g. html, css and js)</code> appears when Cloudflare
+    (Pages, or Workers Builds without a <code>wrangler.jsonc</code>) tries to treat the repository as a static website. This
+    application is a Python/Django server with OCR (Tesseract) and PostgreSQL, which cannot run as static files or as plain
+    JavaScript Workers. It runs on <strong>Cloudflare Containers</strong>: a small Worker receives every request and forwards it to
+    the existing <code>Dockerfile</code> image running in a container managed by a Durable Object.
+  </p>
+  <table>
+    <tr><th>Need</th><th>Cloudflare / open-source service used</th><th>Why</th></tr>
+    <tr><td>Run Django + Gunicorn + Tesseract</td><td>Cloudflare Containers (<code>standard-1</code>: ½ vCPU, 4 GiB)</td><td>Runs the unchanged Docker image.</td></tr>
+    <tr><td>HTTPS, routing, custom domain</td><td>Cloudflare Worker (<code>cloudflare/worker.js</code>)</td><td>Terminates TLS, sets <code>X-Forwarded-Host/Proto</code>, wakes the container.</td></tr>
+    <tr><td>Database</td><td>Managed PostgreSQL reachable over the Internet with TLS, e.g. <strong>Neon</strong> (free tier) or Supabase</td><td>Container disk is ephemeral; Cloudflare has no hosted PostgreSQL.</td></tr>
+    <tr><td>Uploaded bills/statements</td><td>Cloudflare <strong>R2</strong> bucket (S3-compatible, via <code>django-storages</code>)</td><td>Files must survive container restarts.</td></tr>
+    <tr><td>Static CSS/admin assets</td><td>WhiteNoise inside the container</td><td>No separate static hosting needed.</td></tr>
+  </table>
+
+  <h3 id="cf-arch">18.2 Architecture</h3>
+  <div class="diagram"><pre class="mermaid">
+flowchart LR
+  user["Browser"] -- "HTTPS" --> worker["Worker<br/>cloudflare/worker.js"]
+  worker --> dobj["Durable Object<br/>DjangoContainer 'primary'"]
+  dobj -- "start(), /healthz/ probe,<br/>proxy :8000" --> container["Container (Dockerfile)<br/>migrate + ensure_superuser + Gunicorn<br/>Tesseract OCR"]
+  container -- "TLS :5432 (DATABASE_URL)" --> pg[("Neon / managed PostgreSQL")]
+  container -- "S3 API" --> r2[("R2 bucket<br/>uploaded documents")]
+  </pre></div>
+  <ul>
+    <li>A single named instance (<code>primary</code>) serves all traffic, so migrations never run concurrently. It sleeps after 15 minutes without requests; the next request cold-starts it (migrations + boot, typically 10-40 s).</li>
+    <li>The Worker builds the container environment at start-up: <code>DJANGO_ALLOWED_HOSTS</code>, <code>DJANGO_CSRF_TRUSTED_ORIGINS</code>, <code>DJANGO_SECURE=true</code>, <code>DJANGO_USE_X_FORWARDED_HOST=true</code>, plus the secrets listed below. It overwrites any client-supplied <code>X-Forwarded-*</code> headers.</li>
+    <li>On first start, <code>python manage.py ensure_superuser</code> creates the admin user from <code>DJANGO_SUPERUSER_USERNAME</code>/<code>DJANGO_SUPERUSER_PASSWORD</code> (it never changes an existing user).</li>
+  </ul>
+  <table>
+    <tr><th>File</th><th>Purpose</th></tr>
+    <tr><td><code>wrangler.jsonc</code></td><td>Worker name, container definition (builds <code>./Dockerfile</code>), Durable Object binding, non-secret variables.</td></tr>
+    <tr><td><code>cloudflare/worker.js</code></td><td>Starts the container, waits for <code>/healthz/</code>, proxies requests, returns 503 with <code>Retry-After</code> while starting.</td></tr>
+    <tr><td><code>package.json</code></td><td>Pins Wrangler (≥ 4.136) for builds and local commands.</td></tr>
+    <tr><td><code>config/settings.py</code></td><td><code>DATABASE_URL</code> (TLS required), R2 storage when <code>R2_BUCKET</code> is set, <code>DJANGO_USE_X_FORWARDED_HOST</code>.</td></tr>
+    <tr><td><code>finance/management/commands/ensure_superuser.py</code></td><td>Idempotent first-admin creation (no shell access on Containers).</td></tr>
+  </table>
+
+  <h3 id="cf-steps">18.3 Step-by-step setup</h3>
+  <h4>Prerequisites</h4>
+  <ul>
+    <li>Cloudflare account on the <strong>Workers Paid</strong> plan (required for Containers).</li>
+    <li>Node.js 20+ and Docker Desktop (running) on your laptop - only needed for deploying from the laptop.</li>
+  </ul>
+  <h4>1. Create the PostgreSQL database (Neon)</h4>
+  <ol>
+    <li>Sign up at neon.tech → <em>Create project</em> (region close to your users, PostgreSQL 17).</li>
+    <li>Copy the connection string, e.g. <code>postgresql://user:password@ep-xxx.aws.neon.tech/neondb?sslmode=require</code>. Use the <strong>direct</strong> (non-pooler) string so migrations work.</li>
+  </ol>
+  <h4>2. Log in and create the R2 bucket (PowerShell, project folder)</h4>
+<pre class="code">cd C:\Users\ltummala\Documents\Workspace\Personal\real-estate-finance
+npm install
+npx wrangler login
+npx wrangler whoami                                  # shows your Account ID
+npx wrangler r2 bucket create real-estate-finance-uploads</pre>
+  <p>Create an R2 API token: dashboard → <strong>R2 → Manage API tokens → Create API token</strong> → permission <em>Object Read &amp; Write</em>, restricted to the <code>real-estate-finance-uploads</code> bucket. Note the <em>Access Key ID</em> and <em>Secret Access Key</em>.</p>
+  <h4>3. Edit <code>wrangler.jsonc</code></h4>
+  <ul>
+    <li><code>name</code>: must equal the Worker name in the dashboard if you connected the repo with Workers Builds.</li>
+    <li><code>R2_ACCOUNT_ID</code>: your Account ID from <code>wrangler whoami</code>.</li>
+    <li><code>APP_HOSTNAMES</code>: leave empty for <code>*.workers.dev</code>, or set e.g. <code>finance.example.com</code> when you add a custom domain.</li>
+  </ul>
+  <h4>4. Store the secrets (encrypted in Cloudflare; never commit them)</h4>
+<pre class="code">npx wrangler secret put DJANGO_SECRET_KEY            # paste: python -c "import secrets; print(secrets.token_urlsafe(64))"
+npx wrangler secret put DATABASE_URL                 # paste the Neon connection string
+npx wrangler secret put R2_ACCESS_KEY_ID
+npx wrangler secret put R2_SECRET_ACCESS_KEY
+npx wrangler secret put DJANGO_SUPERUSER_PASSWORD    # first admin password (user name: admin)
+npx wrangler secret list</pre>
+  <p class="note">If the Worker does not exist yet, <code>wrangler secret put</code> offers to create it - answer yes.</p>
+  <h4>5. Deploy</h4>
+<pre class="code">git add . ; git commit -m "Cloudflare Containers deployment" ; git push   # Workers Builds deploys automatically, or:
+npx wrangler deploy                                  # from the laptop (Docker must be running)
+npx wrangler containers list
+npx wrangler tail                                    # live logs</pre>
+  <p>Open <code>https://real-estate-finance.&lt;your-subdomain&gt;.workers.dev</code>. The first deploy can take several minutes while the image is provisioned; the first request then cold-starts the container. Sign in as <code>admin</code>, then create accounts, categories and projects in the admin.</p>
+  <h4>6. Custom domain (optional)</h4>
+<pre class="code"># Domain must be on Cloudflare DNS. Dashboard: Workers &amp; Pages → real-estate-finance → Settings → Domains &amp; Routes → Add → Custom domain
+# Then set APP_HOSTNAMES in wrangler.jsonc, e.g. "finance.example.com,real-estate-finance.&lt;sub&gt;.workers.dev", and redeploy.</pre>
+
+  <h3 id="cf-pipeline">18.4 Deployment pipeline</h3>
+  <div class="diagram"><pre class="mermaid">
+flowchart LR
+  pr["Pull request"] --> t1["GitHub Actions: Test"]
+  push["Push to main"] --> t2["GitHub Actions: Test"] --> d["deploy-cloudflare:<br/>wrangler deploy"] --> s["Smoke tests<br/>scripts/smoke_test.sh"]
+  push -. "alternative" .-> wb["Workers Builds:<br/>npx wrangler deploy"]
+  </pre></div>
+  <p>Choose <strong>one</strong> of the two options:</p>
+  <table>
+    <tr><th></th><th>Option A - Workers Builds (Cloudflare Git integration)</th><th>Option B - GitHub Actions (recommended)</th></tr>
+    <tr><td>Setup</td><td>Dashboard → Worker → Settings → Builds: connect the repo, root directory <code>/</code>, build command <em>empty</em>, deploy command <code>npx wrangler deploy</code>, production branch <code>main</code>.</td><td>Disconnect Workers Builds, then run the commands below.</td></tr>
+    <tr><td>Tests before deploy</td><td>No - deploys even if GitHub tests fail.</td><td>Yes - <code>deploy-cloudflare</code> only runs after the Test job passes, then smoke-tests the live URL.</td></tr>
+  </table>
+  <p>Option B commands (PowerShell). Create a Cloudflare API token with the <em>Edit Cloudflare Workers</em> template plus <em>Account → Containers → Edit</em> and <em>Account → Workers R2 Storage → Edit</em>:</p>
+<pre class="code">$repo = "&lt;github-user&gt;/real-estate-finance"
+gh api -X PUT "repos/$repo/environments/cloudflare"
+gh secret set CLOUDFLARE_API_TOKEN --env cloudflare --repo $repo        # paste the token
+gh secret set CLOUDFLARE_ACCOUNT_ID --env cloudflare --repo $repo --body "&lt;account-id&gt;"
+gh variable set APP_URL --env cloudflare --repo $repo --body "https://real-estate-finance.&lt;sub&gt;.workers.dev"
+gh variable set DEPLOY_TARGET --repo $repo --body "cloudflare"          # enables the job; "vm" enables §17 instead
+gh workflow run ci-cd.yml --ref main --repo $repo
+gh run watch --repo $repo</pre>
+  <p class="note">Optional approval gate: GitHub → Settings → Environments → <code>cloudflare</code> → Required reviewers. Without <code>DEPLOY_TARGET</code>, the workflow only runs tests (safe when using Workers Builds).</p>
+
+  <h3 id="cf-test">18.5 Testing &amp; operations</h3>
+  <table>
+    <tr><th>Task</th><th>Command / location</th></tr>
+    <tr><td>Unit + integration tests</td><td>GitHub Actions <em>Test</em> job on every PR and push.</td></tr>
+    <tr><td>Smoke tests on the live URL</td><td><code>bash scripts/smoke_test.sh https://real-estate-finance.&lt;sub&gt;.workers.dev</code> (Git Bash/WSL) - also run by Option B.</td></tr>
+    <tr><td>Run the app locally like Cloudflare</td><td>Create <code>.dev.vars</code> with <code>DJANGO_SECRET_KEY=...</code>, <code>DATABASE_URL=...</code> (and R2 values), then <code>npx wrangler dev</code> → <code>http://localhost:8787</code>.</td></tr>
+    <tr><td>Logs</td><td><code>npx wrangler tail</code>, or dashboard → Workers &amp; Pages → Containers → real-estate-finance → Logs.</td></tr>
+    <tr><td>Rollback</td><td><code>npx wrangler deployments list</code> then <code>npx wrangler rollback &lt;version-id&gt;</code>. Migrations are not reversed - restore the database with Neon's point-in-time restore if needed.</td></tr>
+    <tr><td>Database backups</td><td>Neon keeps point-in-time history (retention depends on plan). Extra copy: <code>pg_dump "$DATABASE_URL" | gzip &gt; backup.sql.gz</code>.</td></tr>
+    <tr><td>Rotate a secret</td><td><code>npx wrangler secret put NAME</code>; the container picks it up on its next start (redeploy to force).</td></tr>
+    <tr><td>Bigger OCR jobs</td><td>Set <code>CONTAINER_INSTANCE</code> to <code>standard-2</code> in <code>wrangler.jsonc</code> and redeploy.</td></tr>
+  </table>
+
+  <h3 id="cf-troubleshoot">18.6 Troubleshooting</h3>
+  <table>
+    <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+    <tr><td><code>Could not detect a directory containing static files</code></td><td>Deployed as Pages, or no <code>wrangler.jsonc</code> in the build root</td><td>Use a <strong>Worker</strong> (not a Pages project), keep <code>wrangler.jsonc</code> at the repo root, deploy command <code>npx wrangler deploy</code>.</td></tr>
+    <tr><td>Build warns the Worker name does not match</td><td><code>name</code> in <code>wrangler.jsonc</code> differs from the dashboard Worker</td><td>Make them identical.</td></tr>
+    <tr><td>Containers not enabled / 403 on deploy</td><td>Free plan or API token lacks Containers permission</td><td>Upgrade to Workers Paid; add <em>Containers: Edit</em> to the token.</td></tr>
+    <tr><td>503 “application is starting” for minutes</td><td>First provisioning, or the container crashes on boot</td><td>Check <code>npx wrangler tail</code> / Containers logs. Common causes: missing secret, wrong <code>DATABASE_URL</code>, R2 values missing (<code>ImproperlyConfigured</code>).</td></tr>
+    <tr><td><code>DisallowedHost</code> or CSRF 403 on a custom domain</td><td>Host not in <code>APP_HOSTNAMES</code></td><td>Add it to <code>APP_HOSTNAMES</code> and redeploy.</td></tr>
+    <tr><td>Uploaded files disappear</td><td><code>R2_BUCKET</code> empty, so files went to ephemeral disk</td><td>Configure R2 (step 2-4).</td></tr>
   </table>
 </section>
 

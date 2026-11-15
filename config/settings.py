@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -67,6 +68,11 @@ DATABASES = {
         "CONN_MAX_AGE": 60,
     }
 }
+# Cloud databases (e.g. Neon) are configured with a single URL instead of POSTGRES_* values.
+if os.environ.get("DATABASE_URL"):
+    DATABASES["default"] = dj_database_url.parse(
+        os.environ["DATABASE_URL"], conn_max_age=60, conn_health_checks=True, ssl_require=True
+    )
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -88,6 +94,24 @@ STORAGES = {
 }
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+# Container disks on Cloudflare are ephemeral, so uploads go to an R2 bucket when configured.
+if os.environ.get("R2_BUCKET"):
+    _r2 = {name: os.environ.get(name, "") for name in ("R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY")}
+    if not all(_r2.values()):
+        raise ImproperlyConfigured("R2_BUCKET is set; also set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY.")
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": os.environ["R2_BUCKET"],
+            "endpoint_url": f"https://{_r2['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com",
+            "access_key": _r2["R2_ACCESS_KEY_ID"],
+            "secret_key": _r2["R2_SECRET_ACCESS_KEY"],
+            "region_name": "auto",
+            "signature_version": "s3v4",
+            "default_acl": None,
+            "file_overwrite": False,
+        },
+    }
 DOCUMENT_MAX_UPLOAD_BYTES = int(os.environ.get("DOCUMENT_MAX_UPLOAD_MB", "10")) * 1024 * 1024
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -113,3 +137,6 @@ if os.environ.get("DJANGO_SECURE", "False").lower() == "true":
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_HSTS_SECONDS", "3600"))
     SECURE_REFERRER_POLICY = "same-origin"
+
+# Only safe when the app is reachable solely through a trusted proxy (the Cloudflare Worker).
+USE_X_FORWARDED_HOST = os.environ.get("DJANGO_USE_X_FORWARDED_HOST", "False").lower() == "true"
