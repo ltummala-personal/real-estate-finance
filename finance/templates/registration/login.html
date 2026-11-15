@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in - Project Finance</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f3f6f8; color: #17212b; }
+    main { max-width: 380px; margin: 10vh auto; padding: 2rem; background: white; border-radius: .6rem; }
+    label { display: block; margin-top: 1rem; }
+    input { box-sizing: border-box; width: 100%; padding: .65rem; margin-top: .3rem; }
+    button { margin-top: 1.2rem; padding: .65rem 1rem; background: #176b87; color: white; border: 0; border-radius: .3rem; }
+    .errorlist { color: #a11; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Project Finance</h1>
+    <p>Sign in to access your company dashboard.</p>
+    {% if form.errors %}<p role="alert">Your username or password was not recognized.</p>{% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <label for="{{ form.username.id_for_label }}">Username</label>
+      {{ form.username }}
+      <label for="{{ form.password.id_for_label }}">Password</label>
+      {{ form.password }}
+      <input type="hidden" name="next" value="{{ next }}">
+      <button type="submit">Sign in</button>
+    </form>
+  </main>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{% extends "finance/base.html" %}
+{% block title %}Manual entry - Project Finance{% endblock %}
+{% block content %}
+<h1>Manual entry</h1>
+<section style="max-width:640px">
+  <form method="post" class="form-grid">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="actions">
+      <button type="submit">Save</button>
+      <button type="submit" name="add_another" value="1" class="secondary">Save and add another</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

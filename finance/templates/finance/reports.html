@@ -1,0 +1,86 @@
+{% extends "finance/base.html" %}
+{% block title %}Reports - Project Finance{% endblock %}
+{% block content %}
+<h1>Reports</h1>
+<section>
+  <form method="get" class="filters">
+    {% for field in filter_form %}<label>{{ field.label }}{{ field }}</label>{% endfor %}
+    <button type="submit">Apply</button>
+    <a class="button secondary" href="{% url 'reports' %}">Clear</a>
+    <a class="button secondary" href="?{% if querystring %}{{ querystring }}&amp;{% endif %}export=csv">Export CSV</a>
+  </form>
+</section>
+
+<div class="cards" style="margin-top:1rem">
+  <div class="card"><div class="muted">Transactions</div><p class="amount">{{ totals.count }}</p></div>
+  <div class="card"><div class="muted">Money in</div><p class="amount in">₹{{ totals.income|floatformat:2 }}</p></div>
+  <div class="card"><div class="muted">Money out</div><p class="amount out">₹{{ totals.expense|floatformat:2 }}</p></div>
+  <div class="card"><div class="muted">Net</div><p class="amount">₹{{ net|floatformat:2 }}</p></div>
+</div>
+
+<section>
+  <h2>By month</h2>
+  <table>
+    <thead><tr><th>Month</th><th class="num">Entries</th><th class="num">Money in</th><th class="num">Money out</th></tr></thead>
+    <tbody>
+      {% for row in by_month %}
+      <tr><td>{{ row.month|date:"M Y" }}</td><td class="num">{{ row.count }}</td><td class="num in">₹{{ row.income|floatformat:2 }}</td><td class="num out">₹{{ row.expense|floatformat:2 }}</td></tr>
+      {% empty %}<tr><td colspan="4">No data.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>By project</h2>
+  <table>
+    <thead><tr><th>Project</th><th class="num">Budget</th><th class="num">Money out</th><th class="num">Money in</th><th class="num">Budget remaining</th></tr></thead>
+    <tbody>
+      {% for row in by_project %}
+      <tr>
+        <td>{% if row.project__code %}{{ row.project__code }} - {{ row.project__name }}{% else %}<span class="muted">Unassigned</span>{% endif %}</td>
+        <td class="num">{% if row.project__budget is not None %}₹{{ row.project__budget|floatformat:2 }}{% else %}—{% endif %}</td>
+        <td class="num out">₹{{ row.expense|floatformat:2 }}</td>
+        <td class="num in">₹{{ row.income|floatformat:2 }}</td>
+        <td class="num">{% if row.remaining is not None %}₹{{ row.remaining|floatformat:2 }}{% else %}—{% endif %}</td>
+      </tr>
+      {% empty %}<tr><td colspan="5">No data.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>By category</h2>
+  <table>
+    <thead><tr><th>Category</th><th class="num">Entries</th><th class="num">Money out</th><th class="num">Money in</th></tr></thead>
+    <tbody>
+      {% for row in by_category %}
+      <tr><td>{{ row.category__name|default:"Uncategorised" }}</td><td class="num">{{ row.count }}</td><td class="num out">₹{{ row.expense|floatformat:2 }}</td><td class="num in">₹{{ row.income|floatformat:2 }}</td></tr>
+      {% empty %}<tr><td colspan="4">No data.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>By account</h2>
+  <table>
+    <thead><tr><th>Account</th><th class="num">Entries</th><th class="num">Money in</th><th class="num">Money out</th></tr></thead>
+    <tbody>
+      {% for row in by_account %}
+      <tr><td>{{ row.account__name|default:"No account" }}</td><td class="num">{{ row.count }}</td><td class="num in">₹{{ row.income|floatformat:2 }}</td><td class="num out">₹{{ row.expense|floatformat:2 }}</td></tr>
+      {% empty %}<tr><td colspan="4">No data.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Top vendors (money out)</h2>
+  <table>
+    <thead><tr><th>Vendor</th><th class="num">Payments</th><th class="num">Total</th></tr></thead>
+    <tbody>
+      {% for row in top_vendors %}
+      <tr><td>{{ row.counterparty }}</td><td class="num">{{ row.count }}</td><td class="num out">₹{{ row.total|floatformat:2 }}</td></tr>
+      {% empty %}<tr><td colspan="3">No data.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

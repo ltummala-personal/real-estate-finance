@@ -1,0 +1,77 @@
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      image:
+        required: true
+        type: string
+      tag:
+        required: true
+        type: string
+      run_test_suite:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    name: ${{ inputs.environment }}
+    runs-on: ubuntu-24.04
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ vars.APP_URL }}
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    env:
+      APP_DIR: ${{ vars.APP_DIR || '/opt/real-estate-finance' }}
+      APP_URL: ${{ vars.APP_URL }}
+      WEB_IMAGE: ${{ inputs.image }}
+      IMAGE_TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          echo "TARGET=$SSH_USER@$SSH_HOST" >> "$GITHUB_ENV"
+
+      - name: Copy deployment files
+        run: scp compose.yaml compose.prod.yaml Caddyfile scripts/remote_deploy.sh "$TARGET:$APP_DIR/"
+
+      - name: Pull image, back up database, restart
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          printf '%s\n' "$GHCR_TOKEN" | ssh "$TARGET" \
+            "cd '$APP_DIR' && WEB_IMAGE='$WEB_IMAGE' IMAGE_TAG='$IMAGE_TAG' GHCR_USER='$GHCR_USER' bash remote_deploy.sh"
+
+      - name: Run test suite inside the cloud environment
+        if: inputs.run_test_suite
+        run: |
+          ssh "$TARGET" "cd '$APP_DIR' && export WEB_IMAGE='$WEB_IMAGE' IMAGE_TAG='$IMAGE_TAG' \
+            && docker compose -f compose.yaml -f compose.prod.yaml run --rm --no-deps web python manage.py check --deploy \
+            && docker compose -f compose.yaml -f compose.prod.yaml run --rm --no-deps -e DJANGO_SECURE=false web python manage.py test --noinput"
+
+      - name: Smoke tests against the public URL
+        run: bash scripts/smoke_test.sh "$APP_URL"
+
+      - name: Remove SSH key
+        if: always()
+        run: rm -f ~/.ssh/id_ed25519

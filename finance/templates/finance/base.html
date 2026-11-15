@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Project Finance{% endblock %}</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; color: #17212b; background: #f3f6f8; }
+    body { margin: 0; }
+    header { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: center; padding: .8rem 2rem; background: #153b50; color: white; }
+    header a { color: white; text-decoration: none; margin-right: 1rem; }
+    header a:hover { text-decoration: underline; }
+    header form { display: inline; }
+    main { max-width: 1250px; margin: 1.5rem auto; padding: 0 1rem; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; }
+    .card, section { background: white; border-radius: .6rem; padding: 1.2rem; box-shadow: 0 1px 5px #152b3a14; }
+    .amount { font-size: 1.4rem; font-weight: 700; margin: .4rem 0 0; }
+    section { margin-top: 1.5rem; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: .55rem .45rem; border-bottom: 1px solid #e5eaee; vertical-align: top; }
+    th { color: #52616c; font-size: .85rem; }
+    td.num, th.num { text-align: right; white-space: nowrap; }
+    .actions { margin: 1rem 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+    .button, button { display: inline-block; padding: .55rem .95rem; border-radius: .3rem; background: #176b87; color: white; text-decoration: none; border: 0; cursor: pointer; font: inherit; }
+    .button.secondary, button.secondary { background: #5b6b77; }
+    button.danger { background: #a33; }
+    .muted { color: #62727e; }
+    .in { color: #17803d; } .out { color: #a33; }
+    .badge { display: inline-block; padding: .1rem .45rem; border-radius: 1rem; font-size: .75rem; background: #e5eaee; }
+    .badge.warn { background: #fde8c8; color: #7a4b00; }
+    .messages { list-style: none; padding: 0; }
+    .messages li { padding: .7rem 1rem; border-radius: .4rem; margin-bottom: .5rem; background: #e3f2ea; }
+    .messages li.error { background: #fbe3e3; }
+    .filters { display: flex; flex-wrap: wrap; gap: .6rem; align-items: end; }
+    .filters label { display: flex; flex-direction: column; font-size: .8rem; color: #52616c; }
+    .form-grid p { margin: 0 0 1rem; }
+    .form-grid label { display: block; font-weight: 600; margin-bottom: .25rem; }
+    .form-grid .helptext { display: block; color: #62727e; font-size: .85rem; }
+    input, select, textarea { padding: .4rem; font: inherit; max-width: 100%; box-sizing: border-box; }
+    .errorlist { color: #a11; margin: .2rem 0; padding-left: 1rem; }
+    .pagination { margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <strong style="margin-right:1.5rem">Real Estate Finance</strong>
+      <a href="{% url 'dashboard' %}">Dashboard</a>
+      <a href="{% url 'transaction_list' %}">Transactions</a>
+      <a href="{% url 'transaction_create' %}">Manual entry</a>
+      <a href="{% url 'document_upload' %}">Upload</a>
+      <a href="{% url 'document_list' %}">Documents</a>
+      <a href="{% url 'reports' %}">Reports</a>
+      {% if user.is_staff %}<a href="{% url 'admin:index' %}">Admin</a>{% endif %}
+    </nav>
+    <form method="post" action="{% url 'logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="secondary">Sign out</button>
+    </form>
+  </header>
+  <main>
+    {% if messages %}
+    <ul class="messages">
+      {% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

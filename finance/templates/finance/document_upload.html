@@ -1,0 +1,18 @@
+{% extends "finance/base.html" %}
+{% block title %}Upload - Project Finance{% endblock %}
+{% block content %}
+<h1>Upload a document</h1>
+<section style="max-width:640px">
+  <p class="muted">
+    Bills, receipts and invoices: PDF or photo/scan (PNG, JPG, TIFF, WEBP) — read with text extraction or OCR.<br>
+    Bank statements: CSV, Excel (.xlsx) or text-based PDF. CSV ledgers: CSV or .xlsx with a header row
+    (date, description, amount or debit/credit; optional vendor, reference, category, project).<br>
+    Nothing is posted to the ledger until you review and approve the extracted entries.
+  </p>
+  <form method="post" enctype="multipart/form-data" class="form-grid">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Upload and extract</button>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,19 @@
+<table>
+  <thead><tr><th>Date</th><th>Description</th><th>Vendor / payer</th><th>Project</th><th>Account</th><th>Category</th><th>Source</th><th class="num">Amount</th></tr></thead>
+  <tbody>
+    {% for txn in transactions %}
+    <tr>
+      <td>{{ txn.date|date:"d M Y" }}</td>
+      <td>{{ txn.description }}{% if txn.reference %}<br><span class="muted">{{ txn.reference }}</span>{% endif %}</td>
+      <td>{{ txn.counterparty|default:"—" }}</td>
+      <td>{{ txn.project.code|default:"—" }}</td>
+      <td>{{ txn.account.name|default:"—" }}</td>
+      <td>{{ txn.category.name|default:"—" }}</td>
+      <td>{% if txn.document_id %}<a href="{% url 'document_review' txn.document_id %}">{{ txn.get_source_display }}</a>{% else %}{{ txn.get_source_display }}{% endif %}</td>
+      <td class="num {% if txn.direction == 'credit' %}in{% else %}out{% endif %}">{% if txn.direction == 'credit' %}+{% else %}−{% endif %}₹{{ txn.amount|floatformat:2 }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="8">No transactions found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>

@@ -1,0 +1,1192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Real Estate Finance - Technical Documentation</title>
+<style>
+  :root { --ink:#17212b; --muted:#5c6b77; --brand:#153b50; --accent:#176b87; --line:#dde4e9; --bg:#f4f7f9; --code:#eef2f5; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+  nav { position:fixed; top:0; left:0; bottom:0; width:270px; overflow-y:auto; background:var(--brand); color:#fff; padding:1.2rem 1rem 2rem; }
+  nav h2 { font-size:1rem; margin:0 0 1rem; }
+  nav a { display:block; color:#d7e6ee; text-decoration:none; padding:.22rem .4rem; border-radius:.3rem; font-size:.9rem; }
+  nav a:hover { background:#ffffff1a; color:#fff; }
+  nav a.sub { padding-left:1.3rem; font-size:.84rem; }
+  main { margin-left:270px; padding:2rem 3rem 4rem; max-width:1250px; }
+  header.cover { background:linear-gradient(135deg,#153b50,#176b87); color:#fff; padding:2rem 2.2rem; border-radius:.8rem; margin-bottom:2rem; }
+  header.cover h1 { margin:0 0 .4rem; }
+  header.cover p { margin:.2rem 0; color:#dbeaf1; }
+  section { background:#fff; border-radius:.7rem; padding:1.5rem 1.8rem; margin-bottom:1.6rem; box-shadow:0 1px 5px #152b3a12; }
+  h2 { margin-top:0; border-bottom:2px solid var(--line); padding-bottom:.4rem; color:var(--brand); }
+  h3 { color:var(--accent); margin-top:1.6rem; }
+  h4 { margin-bottom:.3rem; }
+  table { width:100%; border-collapse:collapse; margin:.6rem 0 1rem; font-size:.92rem; }
+  th, td { border:1px solid var(--line); padding:.45rem .6rem; text-align:left; vertical-align:top; }
+  th { background:#f0f4f7; }
+  code, pre.code { background:var(--code); border-radius:.25rem; font-family: ui-monospace, Consolas, monospace; font-size:.86em; }
+  code { padding:.05rem .3rem; }
+  pre.code { padding:.8rem 1rem; overflow-x:auto; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1rem; }
+  .card { border:1px solid var(--line); border-radius:.5rem; padding:1rem; background:#fbfcfd; }
+  .card h4 { margin-top:0; color:var(--accent); }
+  .badge { display:inline-block; font-size:.75rem; padding:.05rem .45rem; border-radius:1rem; background:#e1eef4; color:#174a5e; margin-right:.25rem; }
+  .warn { background:#fff6e5; border-left:4px solid #e0a020; padding:.7rem 1rem; border-radius:.3rem; }
+  .note { background:#eaf5fa; border-left:4px solid var(--accent); padding:.7rem 1rem; border-radius:.3rem; }
+  .diagram { border:1px solid var(--line); border-radius:.5rem; padding:1rem; background:#fff; overflow-x:auto; text-align:center; }
+  pre.mermaid { background:none; margin:0; }
+  .muted { color:var(--muted); }
+  @media (max-width: 900px) { nav { position:static; width:auto; } main { margin-left:0; padding:1rem; } }
+  @media print { nav { display:none; } main { margin:0; } section { box-shadow:none; page-break-inside:avoid; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <h2>Real Estate Finance</h2>
+  <a href="#overview">1. Overview</a>
+  <a href="#features">2. Feature catalogue</a>
+  <a href="#stack">3. Technology stack</a>
+  <a href="#architecture">4. System architecture</a>
+  <a class="sub" href="#deployment">4.1 Deployment topology</a>
+  <a class="sub" href="#layers">4.2 Application layers</a>
+  <a class="sub" href="#module-deps">4.3 Module dependencies</a>
+  <a href="#data-model">5. Data model</a>
+  <a class="sub" href="#erd">5.1 Entity relationship diagram</a>
+  <a class="sub" href="#entities">5.2 Entity reference</a>
+  <a class="sub" href="#enums">5.3 Enumerations</a>
+  <a class="sub" href="#constraints">5.4 Constraints &amp; integrity</a>
+  <a href="#modules">6. Module reference</a>
+  <a class="sub" href="#m-config">6.1 config</a>
+  <a class="sub" href="#m-models">6.2 finance.models</a>
+  <a class="sub" href="#m-extraction">6.3 finance.extraction</a>
+  <a class="sub" href="#m-services">6.4 finance.services</a>
+  <a class="sub" href="#m-forms">6.5 finance.forms</a>
+  <a class="sub" href="#m-views">6.6 finance.views</a>
+  <a class="sub" href="#m-urls">6.7 finance.urls</a>
+  <a class="sub" href="#m-admin">6.8 finance.admin</a>
+  <a class="sub" href="#m-templates">6.9 Templates</a>
+  <a class="sub" href="#m-migrations">6.10 Migrations</a>
+  <a class="sub" href="#m-tests">6.11 Tests</a>
+  <a href="#flows">7. Process flows</a>
+  <a class="sub" href="#flow-upload">7.1 Upload &amp; extraction</a>
+  <a class="sub" href="#flow-review">7.2 Review &amp; approval</a>
+  <a class="sub" href="#flow-states">7.3 Status lifecycles</a>
+  <a class="sub" href="#flow-manual">7.4 Manual entry</a>
+  <a class="sub" href="#flow-reports">7.5 Reporting</a>
+  <a href="#extraction-rules">8. Extraction rules</a>
+  <a href="#statistics">9. Statistics definitions</a>
+  <a href="#routes">10. URL / route reference</a>
+  <a href="#security">11. Security controls</a>
+  <a href="#config">12. Configuration</a>
+  <a href="#operations">13. Deployment &amp; operations</a>
+  <a href="#testing">14. Testing</a>
+  <a href="#limits">15. Limitations &amp; roadmap</a>
+  <a href="#glossary">16. Glossary</a>
+  <a href="#cloud">17. Cloud deployment &amp; CI/CD</a>
+  <a class="sub" href="#cloud-arch">17.1 Target architecture</a>
+  <a class="sub" href="#cloud-pipeline">17.2 Pipeline stages</a>
+  <a class="sub" href="#cloud-files">17.3 Deployment files</a>
+  <a class="sub" href="#cloud-step1">17.4 Step 1 - Push to GitHub</a>
+  <a class="sub" href="#cloud-step2">17.5 Step 2 - Provision servers</a>
+  <a class="sub" href="#cloud-step3">17.6 Step 3 - Server .env</a>
+  <a class="sub" href="#cloud-step4">17.7 Step 4 - Secrets &amp; environments</a>
+  <a class="sub" href="#cloud-step5">17.8 Step 5 - First deployment</a>
+  <a class="sub" href="#cloud-testing">17.9 Testing in the cloud</a>
+  <a class="sub" href="#cloud-ops">17.10 Rollback, backups, ops</a>
+  <a class="sub" href="#cloud-troubleshoot">17.11 Troubleshooting</a>
+</nav>
+
+<main>
+<header class="cover">
+  <h1>Real Estate Project Finance</h1>
+  <p>Technical documentation &amp; functional specification</p>
+  <p>Django 5.2 · PostgreSQL 17 · Docker Compose · Single-company POC · Currency: INR · Time zone: Asia/Kolkata</p>
+</header>
+
+<!-- ============================================================ 1 -->
+<section id="overview">
+  <h2>1. Overview</h2>
+  <p>
+    The application keeps all of a real estate company's accounts in one place. Money moves in and out through
+    bank, cash and card accounts, and is tied to projects (sites/developments) and categories (materials, labour,
+    sales receipts, etc.). Data arrives in many shapes — bills, invoices, bank statements, CSV/Excel ledgers and
+    manual entries — and the application converts that unstructured or semi-structured data into a single structured
+    ledger stored in PostgreSQL, from which statistics can be pulled at any time.
+  </p>
+  <h3>Goals</h3>
+  <ul>
+    <li><strong>One ledger:</strong> every rupee in or out is a <code>Transaction</code>, whatever its source.</li>
+    <li><strong>Many inputs:</strong> PDF/image bills and invoices (text extraction + OCR), bank statements (CSV/XLSX/PDF), CSV/XLSX ledgers, manual form entry.</li>
+    <li><strong>Human in the loop:</strong> extracted data is staged and must be reviewed/approved before it reaches the ledger.</li>
+    <li><strong>Traceability:</strong> every imported transaction links back to its original uploaded file, which stays downloadable.</li>
+    <li><strong>On-demand statistics:</strong> filterable reports by month, project, category, account and vendor, with CSV export.</li>
+    <li><strong>Private by default:</strong> runs locally in Docker, all processing (including OCR) on-box; no third-party APIs.</li>
+  </ul>
+  <h3>Users</h3>
+  <table>
+    <tr><th>Role</th><th>How identified</th><th>Can do</th></tr>
+    <tr><td>Accountant / staff user</td><td>Any authenticated Django user</td><td>Upload documents, review &amp; approve entries, manual entries, view transactions and reports, export CSV.</td></tr>
+    <tr><td>Administrator</td><td><code>is_staff</code> (+ model permissions) / superuser</td><td>All of the above plus Django admin: manage projects, accounts, categories, users; correct transactions.</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ 2 -->
+<section id="features">
+  <h2>2. Feature catalogue</h2>
+  <div class="grid">
+    <div class="card"><h4>Dashboard</h4>Money in, total spent, net cash flow, total budget, budget remaining; account balances (opening + in − out); project spend/receipts; recent transactions; count of entries awaiting review.</div>
+    <div class="card"><h4>Bill / receipt import</h4>PDF or photo (PNG/JPG/TIFF/WEBP). Text-layer extraction, OCR fallback for scans. Detects total, date, bill number, vendor, GSTIN.</div>
+    <div class="card"><h4>Invoice import</h4>Same pipeline as bills, labelled as invoice. Direction defaults to money out, editable during review (for sales invoices).</div>
+    <div class="card"><h4>Bank statement import</h4>CSV, Excel (.xlsx) or text PDF. Auto-detects header row and columns; supports debit/credit columns, signed amounts, Dr/Cr markers, running balance inference. Must be linked to an account.</div>
+    <div class="card"><h4>CSV / Excel ledger import</h4>Bulk load historical or external ledgers. Optional Category/Project columns are matched to master data by name/code.</div>
+    <div class="card"><h4>Manual entry</h4>Web form for cash payments, adjustments, receipts. "Save and add another" for fast keying.</div>
+    <div class="card"><h4>Review &amp; approval</h4>Edit every extracted field, approve / reject / defer per row, or bulk approve all complete non-duplicates. Batches of 50.</div>
+    <div class="card"><h4>Duplicate protection</h4>Same file (SHA-256) cannot be uploaded twice; rows matching existing transactions are flagged and excluded from bulk approval.</div>
+    <div class="card"><h4>Transactions register</h4>Filter by date range, project, account, category, direction, source, free text; totals; pagination.</div>
+    <div class="card"><h4>Reports &amp; statistics</h4>Totals; by month; by project with budget remaining; by category; by account; top 10 vendors; CSV export of the filtered set.</div>
+    <div class="card"><h4>Document archive</h4>List of uploads with status and pending/approved counts; download original; view text read from the document.</div>
+    <div class="card"><h4>Master data (admin)</h4>Projects (code, budget), Accounts (bank/cash/card, opening balance), Categories, Users.</div>
+  </div>
+</section>
+
+<!-- ============================================================ 3 -->
+<section id="stack">
+  <h2>3. Technology stack</h2>
+  <table>
+    <tr><th>Layer</th><th>Technology</th><th>Purpose</th></tr>
+    <tr><td>Language/runtime</td><td>Python 3.12 (python:3.12-slim image)</td><td>Application runtime</td></tr>
+    <tr><td>Web framework</td><td>Django 5.2</td><td>ORM, auth, admin, forms, templates, CSRF, sessions</td></tr>
+    <tr><td>App server</td><td>Gunicorn 23 (timeout 180 s)</td><td>WSGI server; long timeout to allow synchronous OCR</td></tr>
+    <tr><td>Static files</td><td>WhiteNoise 6</td><td>Serves compressed, hashed static assets</td></tr>
+    <tr><td>Database</td><td>PostgreSQL 17 (alpine) via psycopg 3</td><td>Persistent structured ledger</td></tr>
+    <tr><td>PDF parsing</td><td>pdfplumber (pdfminer.six, pypdfium2)</td><td>Text and table extraction; page rendering for OCR</td></tr>
+    <tr><td>OCR</td><td>Tesseract (apt <code>tesseract-ocr</code>) + pytesseract</td><td>Scanned PDFs and photographed receipts</td></tr>
+    <tr><td>Images</td><td>Pillow</td><td>Image decoding, decompression-bomb protection</td></tr>
+    <tr><td>Spreadsheets</td><td>openpyxl + defusedxml</td><td>.xlsx reading in read-only mode with hardened XML parsing</td></tr>
+    <tr><td>Containers</td><td>Docker Engine + Compose v2</td><td>Local deployment, network isolation, named volumes</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ 4 -->
+<section id="architecture">
+  <h2>4. System architecture</h2>
+
+  <h3 id="deployment">4.1 Deployment topology</h3>
+  <div class="diagram"><pre class="mermaid">
+flowchart LR
+  subgraph Host["Host machine"]
+    B["Browser"]
+    subgraph Compose["Docker Compose project"]
+      subgraph app_net["app_net (bridge)"]
+        W["web container&lt;br/&gt;Gunicorn + Django&lt;br/&gt;Tesseract OCR&lt;br/&gt;port 8000"]
+      end
+      subgraph db_net["database_net (internal: no outbound)"]
+        D[("db container&lt;br/&gt;PostgreSQL 17")]
+      end
+      V1[("postgres_data volume")]
+      V2[("uploads_data volume&lt;br/&gt;/app/media/documents")]
+    end
+  end
+  B -- "http://127.0.0.1:8000 only" --> W
+  W -- "SQL :5432" --> D
+  D --- V1
+  W --- V2
+  </pre></div>
+  <p class="muted">The web port is bound to <code>127.0.0.1</code> only. PostgreSQL has no published port and lives on an internal network shared only with the web container. The web container runs as a non-root <code>app</code> user.</p>
+
+  <h3 id="layers">4.2 Application layers</h3>
+  <div class="diagram"><pre class="mermaid">
+flowchart TB
+  subgraph Presentation
+    T["Templates&lt;br/&gt;base, dashboard, transaction_list, transaction_form,&lt;br/&gt;document_upload, document_list, document_review, reports"]
+    A["Django Admin&lt;br/&gt;master data and corrections"]
+  end
+  subgraph Web["HTTP layer"]
+    U["finance.urls / config.urls"]
+    V["finance.views&lt;br/&gt;login_required views"]
+    F["finance.forms&lt;br/&gt;validation, filtering"]
+  end
+  subgraph Domain["Domain / service layer"]
+    S["finance.services&lt;br/&gt;process_document, post_entry,&lt;br/&gt;approve_all, refresh_document_status"]
+    X["finance.extraction&lt;br/&gt;pure parsing: CSV, XLSX, PDF, OCR,&lt;br/&gt;invoice heuristics"]
+  end
+  subgraph Persistence
+    M["finance.models&lt;br/&gt;Project, Account, Category,&lt;br/&gt;SourceDocument, ExtractedEntry, Transaction"]
+    DB[("PostgreSQL")]
+    FS[("Media storage&lt;br/&gt;uploaded originals")]
+  end
+  T --> U --> V
+  A --> M
+  V --> F
+  V --> S
+  S --> X
+  S --> M
+  F --> M
+  M --> DB
+  V --> FS
+  </pre></div>
+
+  <h3 id="module-deps">4.3 Module dependency graph</h3>
+  <div class="diagram"><pre class="mermaid">
+flowchart LR
+  urls["finance.urls"] --> views["finance.views"]
+  views --> forms["finance.forms"]
+  views --> services["finance.services"]
+  views --> models["finance.models"]
+  forms --> models
+  services --> extraction["finance.extraction"]
+  services --> models
+  admin["finance.admin"] --> models
+  tests["finance.tests"] --> extraction
+  tests --> views
+  tests --> models
+  extraction -. "lazy imports" .-> libs["pdfplumber / pytesseract /&lt;br/&gt;Pillow / openpyxl"]
+  config["config.settings / config.urls"] --> urls
+  </pre></div>
+  <p class="note"><code>finance.extraction</code> has no Django or database dependency. It can be unit-tested in isolation and swapped for a different engine (e.g. an ML/LLM extractor) without touching the rest of the system, as long as it returns the same <code>Result</code>/<code>Row</code> structures.</p>
+</section>
+
+<!-- ============================================================ 5 -->
+<section id="data-model">
+  <h2>5. Data model</h2>
+
+  <h3 id="erd">5.1 Entity relationship diagram</h3>
+  <div class="diagram"><pre class="mermaid">
+erDiagram
+  USER ||--o{ SOURCE_DOCUMENT : "uploads (uploaded_by)"
+  USER ||--o{ TRANSACTION : "creates (created_by)"
+  PROJECT |o--o{ TRANSACTION : "charged to"
+  ACCOUNT |o--o{ TRANSACTION : "money moved through"
+  CATEGORY |o--o{ TRANSACTION : "classified as"
+  SOURCE_DOCUMENT |o--o{ TRANSACTION : "originated from"
+  PROJECT |o--o{ SOURCE_DOCUMENT : "default project"
+  ACCOUNT |o--o{ SOURCE_DOCUMENT : "statement of"
+  SOURCE_DOCUMENT ||--o{ EXTRACTED_ENTRY : "produces"
+  CATEGORY |o--o{ EXTRACTED_ENTRY : "suggested category"
+  PROJECT |o--o{ EXTRACTED_ENTRY : "suggested project"
+  EXTRACTED_ENTRY |o--o| TRANSACTION : "posted as"
+
+  PROJECT {
+    bigint id PK
+    varchar code UK "max 30"
+    varchar name "max 200"
+    varchar location
+    decimal budget "14,2 >= 0"
+    timestamptz created_at
+  }
+  ACCOUNT {
+    bigint id PK
+    varchar name UK
+    varchar kind "bank|cash|card|other"
+    varchar institution
+    varchar number_last4
+    decimal opening_balance "14,2"
+    timestamptz created_at
+  }
+  CATEGORY {
+    bigint id PK
+    varchar name UK
+  }
+  SOURCE_DOCUMENT {
+    bigint id PK
+    varchar kind "bill|invoice|bank_statement|csv"
+    varchar file "random UUID path"
+    varchar original_name
+    char sha256 UK
+    bigint project_id FK "nullable"
+    bigint account_id FK "nullable"
+    varchar status "review|completed|failed"
+    text raw_text
+    varchar error
+    int uploaded_by_id FK
+    timestamptz uploaded_at
+  }
+  EXTRACTED_ENTRY {
+    bigint id PK
+    bigint document_id FK
+    date date "nullable"
+    varchar direction "debit|credit"
+    decimal amount "nullable"
+    varchar description
+    varchar counterparty
+    varchar reference
+    bigint category_id FK "nullable"
+    bigint project_id FK "nullable"
+    varchar notes
+    boolean possible_duplicate
+    varchar status "pending|approved|rejected"
+    bigint transaction_id FK "unique, nullable"
+  }
+  TRANSACTION {
+    bigint id PK
+    date date
+    varchar direction "debit|credit"
+    decimal amount "14,2 > 0"
+    varchar description
+    varchar counterparty
+    varchar reference
+    bigint project_id FK "nullable"
+    bigint account_id FK "nullable"
+    bigint category_id FK "nullable"
+    varchar source "manual|bill|invoice|bank_statement|csv"
+    bigint document_id FK "nullable"
+    char fingerprint "indexed"
+    int created_by_id FK
+    timestamptz created_at
+  }
+  USER {
+    int id PK
+    varchar username UK
+    boolean is_staff
+  }
+  </pre></div>
+
+  <h3 id="entities">5.2 Entity reference</h3>
+
+  <h4>Project <span class="badge">finance_project</span></h4>
+  <table>
+    <tr><th>Field</th><th>Type</th><th>Rules</th><th>Meaning</th></tr>
+    <tr><td>code</td><td>varchar(30)</td><td>unique</td><td>Short project code, e.g. <code>P-001</code>; also used to match the Project column in CSV imports.</td></tr>
+    <tr><td>name</td><td>varchar(200)</td><td>required</td><td>Project / site name (also matched on import).</td></tr>
+    <tr><td>location</td><td>varchar(200)</td><td>optional</td><td>Site location.</td></tr>
+    <tr><td>budget</td><td>decimal(14,2)</td><td>≥ 0 (DB check)</td><td>Approved budget used for "budget remaining".</td></tr>
+    <tr><td>created_at</td><td>timestamptz</td><td>auto</td><td></td></tr>
+  </table>
+
+  <h4>Account <span class="badge">finance_account</span></h4>
+  <table>
+    <tr><th>Field</th><th>Type</th><th>Rules</th><th>Meaning</th></tr>
+    <tr><td>name</td><td>varchar(100)</td><td>unique</td><td>e.g. "HDFC Current", "Site Petty Cash".</td></tr>
+    <tr><td>kind</td><td>varchar(10)</td><td>bank / cash / card / other</td><td>Account type.</td></tr>
+    <tr><td>institution</td><td>varchar(100)</td><td>optional</td><td>Bank name.</td></tr>
+    <tr><td>number_last4</td><td>varchar(4)</td><td>optional</td><td>Only last 4 digits are stored — never the full account number.</td></tr>
+    <tr><td>opening_balance</td><td>decimal(14,2)</td><td>default 0</td><td>Balance before the first recorded transaction.</td></tr>
+  </table>
+
+  <h4>Category <span class="badge">finance_category</span></h4>
+  <table>
+    <tr><th>Field</th><th>Type</th><th>Rules</th><th>Meaning</th></tr>
+    <tr><td>name</td><td>varchar(100)</td><td>unique</td><td>Expense/income head, e.g. Materials, Labour, Booking Advance. Matched case-insensitively on import.</td></tr>
+  </table>
+
+  <h4>SourceDocument <span class="badge">finance_sourcedocument</span></h4>
+  <table>
+    <tr><th>Field</th><th>Type</th><th>Rules</th><th>Meaning</th></tr>
+    <tr><td>kind</td><td>varchar(20)</td><td>bill / invoice / bank_statement / csv</td><td>Selects the extraction pipeline.</td></tr>
+    <tr><td>file</td><td>FileField</td><td>stored as <code>documents/&lt;uuid&gt;.&lt;ext&gt;</code></td><td>Original upload; user filename never used on disk.</td></tr>
+    <tr><td>original_name</td><td>varchar(255)</td><td></td><td>Filename shown to users and used for download.</td></tr>
+    <tr><td>sha256</td><td>char(64)</td><td>unique</td><td>Content hash; blocks re-uploading the same file.</td></tr>
+    <tr><td>project</td><td>FK → Project</td><td>nullable, PROTECT</td><td>Default project applied to extracted entries.</td></tr>
+    <tr><td>account</td><td>FK → Account</td><td>nullable, PROTECT; required for bank statements (form rule)</td><td>Account applied to posted transactions.</td></tr>
+    <tr><td>status</td><td>varchar(10)</td><td>review / completed / failed</td><td>See lifecycle in §7.3.</td></tr>
+    <tr><td>raw_text</td><td>text</td><td>≤ 100 000 chars</td><td>Text read by PDF extraction/OCR, kept for audit.</td></tr>
+    <tr><td>error</td><td>varchar(500)</td><td></td><td>Extraction failure reason or skipped-row summary.</td></tr>
+    <tr><td>uploaded_by / uploaded_at</td><td>FK → User / timestamptz</td><td>SET_NULL</td><td>Audit.</td></tr>
+  </table>
+
+  <h4>ExtractedEntry <span class="badge">finance_extractedentry</span></h4>
+  <table>
+    <tr><th>Field</th><th>Type</th><th>Rules</th><th>Meaning</th></tr>
+    <tr><td>document</td><td>FK → SourceDocument</td><td>CASCADE</td><td>Parent upload.</td></tr>
+    <tr><td>date, amount</td><td>date / decimal</td><td>nullable</td><td>May be missing if extraction could not find them; required to approve.</td></tr>
+    <tr><td>direction</td><td>varchar(6)</td><td>debit / credit</td><td>Money out / money in.</td></tr>
+    <tr><td>description, counterparty, reference</td><td>varchar</td><td>blank allowed</td><td>Editable during review.</td></tr>
+    <tr><td>category, project</td><td>FK</td><td>nullable, SET_NULL</td><td>Suggested from CSV columns or document default.</td></tr>
+    <tr><td>notes</td><td>varchar(500)</td><td></td><td>Extraction warnings (e.g. "assumed money out – verify", GSTIN found).</td></tr>
+    <tr><td>possible_duplicate</td><td>boolean</td><td></td><td>True if its fingerprint matches an existing transaction.</td></tr>
+    <tr><td>status</td><td>varchar(10)</td><td>pending / approved / rejected</td><td>See §7.3.</td></tr>
+    <tr><td>transaction</td><td>OneToOne → Transaction</td><td>nullable</td><td>Ledger row created on approval.</td></tr>
+  </table>
+
+  <h4>Transaction <span class="badge">finance_transaction</span> — the ledger</h4>
+  <table>
+    <tr><th>Field</th><th>Type</th><th>Rules</th><th>Meaning</th></tr>
+    <tr><td>date</td><td>date</td><td>required</td><td>Transaction / bill date.</td></tr>
+    <tr><td>direction</td><td>varchar(6)</td><td>debit (default) / credit</td><td>Money out / money in.</td></tr>
+    <tr><td>amount</td><td>decimal(14,2)</td><td>&gt; 0 (DB check + validator)</td><td>Always positive; sign is carried by <code>direction</code>.</td></tr>
+    <tr><td>description</td><td>varchar(250)</td><td>required</td><td></td></tr>
+    <tr><td>counterparty</td><td>varchar(200)</td><td>optional</td><td>Vendor (money out) or payer (money in).</td></tr>
+    <tr><td>reference</td><td>varchar(100)</td><td>optional</td><td>Invoice no., cheque no., UTR.</td></tr>
+    <tr><td>project / account / category</td><td>FK</td><td>nullable, PROTECT</td><td>Master data can't be deleted while referenced.</td></tr>
+    <tr><td>source</td><td>varchar(20)</td><td>manual / bill / invoice / bank_statement / csv</td><td>How the row entered the ledger.</td></tr>
+    <tr><td>document</td><td>FK → SourceDocument</td><td>nullable, SET_NULL</td><td>Link to originating upload.</td></tr>
+    <tr><td>fingerprint</td><td>char(64)</td><td>indexed, computed on save</td><td>SHA-256 of account, date, amount, direction, normalised description, reference — used for duplicate detection.</td></tr>
+    <tr><td>created_by / created_at</td><td>FK → User / timestamptz</td><td></td><td>Audit.</td></tr>
+  </table>
+
+  <h3 id="enums">5.3 Enumerations</h3>
+  <table>
+    <tr><th>Enum</th><th>Values (stored → label)</th></tr>
+    <tr><td><code>Direction</code></td><td><code>debit</code> → Money out · <code>credit</code> → Money in</td></tr>
+    <tr><td><code>SourceKind</code></td><td><code>manual</code> → Manual entry · <code>bill</code> → Bill / receipt · <code>invoice</code> → Invoice · <code>bank_statement</code> → Bank statement · <code>csv</code> → CSV / spreadsheet ledger</td></tr>
+    <tr><td><code>Account.Kind</code></td><td><code>bank</code>, <code>cash</code>, <code>card</code>, <code>other</code></td></tr>
+    <tr><td><code>SourceDocument.Status</code></td><td><code>review</code> → Needs review · <code>completed</code> · <code>failed</code> → Extraction failed</td></tr>
+    <tr><td><code>ExtractedEntry.Status</code></td><td><code>pending</code>, <code>approved</code>, <code>rejected</code></td></tr>
+  </table>
+
+  <h3 id="constraints">5.4 Constraints &amp; integrity</h3>
+  <ul>
+    <li><code>project_budget_nonnegative</code>: CHECK budget ≥ 0.</li>
+    <li><code>transaction_amount_positive</code>: CHECK amount &gt; 0.</li>
+    <li>Unique: <code>Project.code</code>, <code>Account.name</code>, <code>Category.name</code>, <code>SourceDocument.sha256</code>, <code>ExtractedEntry.transaction</code>.</li>
+    <li><strong>PROTECT</strong> on Transaction → Project/Account/Category and SourceDocument → Project/Account: master data in use cannot be deleted.</li>
+    <li><strong>CASCADE</strong> SourceDocument → ExtractedEntry: staging rows go with their document.</li>
+    <li><strong>SET_NULL</strong> Transaction → SourceDocument: ledger rows survive if a document record is removed.</li>
+    <li>Approval of multiple entries runs in a DB transaction with <code>SELECT … FOR UPDATE</code> to prevent double-posting.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ 6 -->
+<section id="modules">
+  <h2>6. Module reference</h2>
+
+  <h3 id="m-config">6.1 <code>config</code> — project configuration</h3>
+  <table>
+    <tr><th>File</th><th>Responsibility</th></tr>
+    <tr><td>settings.py</td><td>Reads secrets and DB settings from environment; refuses to start without a real <code>DJANGO_SECRET_KEY</code>; PostgreSQL; WhiteNoise; <code>en-in</code> / <code>Asia/Kolkata</code>; media root; <code>DOCUMENT_MAX_UPLOAD_BYTES</code>; hardened cookie/header settings.</td></tr>
+    <tr><td>urls.py</td><td>Mounts <code>/admin/</code>, <code>/accounts/login/</code>, <code>/accounts/logout/</code> and the finance app at <code>/</code>.</td></tr>
+    <tr><td>wsgi.py</td><td>WSGI entry point for Gunicorn.</td></tr>
+  </table>
+
+  <h3 id="m-models">6.2 <code>finance.models</code> — domain entities</h3>
+  <table>
+    <tr><th>Symbol</th><th>Description</th></tr>
+    <tr><td><code>Direction</code>, <code>SourceKind</code></td><td>Shared choice enums.</td></tr>
+    <tr><td><code>transaction_fingerprint(account_id, date, amount, direction, description, reference)</code></td><td>Deterministic SHA-256 used for duplicate detection; description is lower-cased and whitespace-normalised.</td></tr>
+    <tr><td><code>document_upload_path()</code></td><td>Generates <code>documents/&lt;uuid4&gt;&lt;ext&gt;</code> storage paths.</td></tr>
+    <tr><td><code>Project</code>, <code>Account</code>, <code>Category</code></td><td>Master data.</td></tr>
+    <tr><td><code>SourceDocument</code></td><td>Uploaded file + extraction status.</td></tr>
+    <tr><td><code>Transaction</code></td><td>Ledger row; <code>save()</code> recomputes <code>fingerprint</code>.</td></tr>
+    <tr><td><code>ExtractedEntry</code></td><td>Staging row awaiting review.</td></tr>
+  </table>
+
+  <h3 id="m-extraction">6.3 <code>finance.extraction</code> — parsing engine (no DB access)</h3>
+  <table>
+    <tr><th>Function / class</th><th>Description</th></tr>
+    <tr><td><code>extract(kind, filename, data) → Result</code></td><td>Entry point. Routes by document kind and file extension (see §7.1).</td></tr>
+    <tr><td><code>Row</code> / <code>Result</code></td><td>Dataclasses: date, amount, direction, description, counterparty, reference, category_name, project_name, notes · rows, raw_text, skipped.</td></tr>
+    <tr><td><code>ExtractionError</code></td><td>User-safe failure message; stored on the document.</td></tr>
+    <tr><td><code>parse_date(value)</code></td><td>Accepts date objects and ~14 text formats (dd/mm/yyyy first, Indian convention), ordinal suffixes, month names, trailing times; rejects years outside 1990–2100.</td></tr>
+    <tr><td><code>parse_amount(value)</code></td><td>Signed Decimal (2 dp) from ₹/Rs/INR, Indian grouping (1,23,456.50), parentheses negatives, leading −, trailing Dr/Cr; caps at 999,999,999,999.99.</td></tr>
+    <tr><td><code>parse_table(rows, default_direction)</code></td><td>Finds the header in the first 40 rows, maps columns, parses rows, counts skipped rows, infers direction. Max 5 000 rows.</td></tr>
+    <tr><td><code>read_csv(data)</code></td><td>Decodes UTF-8 (BOM) → cp1252 → latin-1; sniffs <code>, ; tab |</code> delimiters.</td></tr>
+    <tr><td><code>read_xlsx(data)</code></td><td>First worksheet, read-only, max 5 200 rows × 60 columns.</td></tr>
+    <tr><td><code>parse_statement_lines(lines)</code></td><td>Fallback for PDF statements without tables; uses running balance to tell debit from credit.</td></tr>
+    <tr><td><code>parse_invoice_text(text, kind)</code></td><td>Heuristics for total, date, reference number, vendor, GSTIN.</td></tr>
+    <tr><td><code>_read_pdf</code>, <code>_ocr_pdf</code>, <code>_ocr_image_bytes</code>, <code>_ocr</code></td><td>PDF text/tables (≤ 50 pages), page rendering at 200 dpi for OCR (≤ 5 pages), Tesseract with 60 s timeout.</td></tr>
+  </table>
+
+  <h3 id="m-services">6.4 <code>finance.services</code> — business operations</h3>
+  <table>
+    <tr><th>Function</th><th>Description</th></tr>
+    <tr><td><code>process_document(document, data)</code></td><td>Runs extraction; on error marks document <code>failed</code>. Otherwise maps category/project names to master data, applies document default project, computes fingerprints, flags duplicates against existing transactions, bulk-creates entries and sets status <code>review</code> — atomically.</td></tr>
+    <tr><td><code>entry_is_postable(entry)</code></td><td>True when date, amount &gt; 0 and description are present.</td></tr>
+    <tr><td><code>post_entry(entry, user)</code></td><td>Creates the <code>Transaction</code> (account from document, source = document kind), links it and marks entry approved.</td></tr>
+    <tr><td><code>approve_all(document, user)</code></td><td>Locks pending entries, posts every complete non-duplicate, returns (approved, left pending).</td></tr>
+    <tr><td><code>refresh_document_status(document)</code></td><td><code>completed</code> when no entries are pending, otherwise <code>review</code>.</td></tr>
+  </table>
+
+  <h3 id="m-forms">6.5 <code>finance.forms</code> — input validation</h3>
+  <table>
+    <tr><th>Form</th><th>Purpose &amp; rules</th></tr>
+    <tr><td><code>DocumentUploadForm</code></td><td>kind, file, account, project. Extension allow-list per kind; size limit; magic-byte content check; SHA-256 duplicate check; account required for bank statements. Exposes <code>file_bytes</code> and <code>sha256</code>.</td></tr>
+    <tr><td><code>EntryReviewForm</code></td><td>Editable entry fields + <code>decision</code> (approve / later / reject). Defaults to "approve" only for complete, non-duplicate rows. Approving requires date, amount &gt; 0, description.</td></tr>
+    <tr><td><code>TransactionForm</code></td><td>Manual entry: date, direction, amount, description, vendor/payer, reference, project, account, category.</td></tr>
+    <tr><td><code>TransactionFilterForm</code></td><td>Shared filters for register and reports; <code>filter(queryset)</code> applies date range, FKs, direction, source and text search over description/vendor/reference.</td></tr>
+  </table>
+  <h4>Allowed upload types</h4>
+  <table>
+    <tr><th>Kind</th><th>Extensions</th><th>Content check</th></tr>
+    <tr><td>Bill / Invoice</td><td>.pdf .png .jpg .jpeg .tif .tiff .webp</td><td><code>%PDF-</code> header, PNG/JPEG/TIFF/WEBP magic bytes</td></tr>
+    <tr><td>Bank statement</td><td>.csv .xlsx .pdf</td><td>CSV must not contain NUL bytes; XLSX must be a ZIP (<code>PK\x03\x04</code>)</td></tr>
+    <tr><td>CSV ledger</td><td>.csv .xlsx</td><td>as above</td></tr>
+  </table>
+
+  <h3 id="m-views">6.6 <code>finance.views</code> — HTTP handlers</h3>
+  <table>
+    <tr><th>View</th><th>Methods</th><th>Behaviour</th></tr>
+    <tr><td><code>dashboard</code></td><td>GET</td><td>KPIs, account balances, project spend/receipts, 10 recent transactions, pending review count.</td></tr>
+    <tr><td><code>transaction_list</code></td><td>GET</td><td>Filtered, paginated (50) register with totals.</td></tr>
+    <tr><td><code>transaction_create</code></td><td>GET, POST</td><td>Manual entry; records <code>created_by</code>.</td></tr>
+    <tr><td><code>document_list</code></td><td>GET</td><td>Uploads with pending/approved counts, paginated.</td></tr>
+    <tr><td><code>document_upload</code></td><td>GET, POST</td><td>Validates, stores file, runs <code>process_document</code>, redirects to review.</td></tr>
+    <tr><td><code>document_review</code></td><td>GET, POST</td><td>Model formset over the next 50 pending entries; actions <code>approve_all</code>, <code>reject_all</code>, or per-row decisions (atomic).</td></tr>
+    <tr><td><code>document_download</code></td><td>GET</td><td>Streams original as attachment (forced download).</td></tr>
+    <tr><td><code>reports</code></td><td>GET</td><td>Aggregations; <code>?export=csv</code> streams filtered transactions with formula-injection protection.</td></tr>
+  </table>
+  <p>Helpers: <code>_totals(qs)</code> (income, expense, count), <code>_grouped(qs, *fields)</code> (group-by with same measures), <code>_csv_safe(value)</code>.</p>
+
+  <h3 id="m-urls">6.7 <code>finance.urls</code></h3>
+  <p>See the full route table in §10.</p>
+
+  <h3 id="m-admin">6.8 <code>finance.admin</code></h3>
+  <table>
+    <tr><th>Admin</th><th>Highlights</th></tr>
+    <tr><td>ProjectAdmin, AccountAdmin, CategoryAdmin</td><td>Master-data CRUD with search.</td></tr>
+    <tr><td>TransactionAdmin</td><td>List filters (direction, source, project, account, category, date), date hierarchy, autocomplete FKs, read-only document/creator, sets <code>created_by</code> on add.</td></tr>
+    <tr><td>SourceDocumentAdmin</td><td>Read-only audit view with inline extracted entries; adding via admin disabled (uploads must go through the validated UI).</td></tr>
+    <tr><td>ExtractedEntryAdmin</td><td>Inspect staging rows.</td></tr>
+  </table>
+
+  <h3 id="m-templates">6.9 Templates</h3>
+  <table>
+    <tr><th>Template</th><th>Used by</th></tr>
+    <tr><td>finance/base.html</td><td>Layout, navigation, flash messages, shared CSS.</td></tr>
+    <tr><td>finance/dashboard.html</td><td>dashboard</td></tr>
+    <tr><td>finance/transaction_list.html, _transaction_table.html, _pagination.html</td><td>transaction_list (table partial also on dashboard)</td></tr>
+    <tr><td>finance/transaction_form.html</td><td>transaction_create</td></tr>
+    <tr><td>finance/document_upload.html, document_list.html, document_review.html</td><td>document views</td></tr>
+    <tr><td>finance/reports.html</td><td>reports</td></tr>
+    <tr><td>registration/login.html</td><td>Django LoginView</td></tr>
+  </table>
+
+  <h3 id="m-migrations">6.10 Migrations</h3>
+  <table>
+    <tr><th>Migration</th><th>Changes</th></tr>
+    <tr><td>0001_initial</td><td>Project and Expense.</td></tr>
+    <tr><td>0002_ledger_and_document_import</td><td>Creates Account, Category, SourceDocument, ExtractedEntry. <strong>Renames</strong> Expense → Transaction (incurred_on → date, vendor → counterparty), preserving existing rows as money-out transactions; project becomes optional; adds direction, account, category, source, document, fingerprint, created_by and the positive-amount constraint.</td></tr>
+  </table>
+
+  <h3 id="m-tests">6.11 Tests (<code>finance/tests.py</code>)</h3>
+  <table>
+    <tr><th>Suite</th><th>Covers</th></tr>
+    <tr><td>DashboardTests</td><td>Login required; project totals and budget remaining; account balance incl. opening balance.</td></tr>
+    <tr><td>ParsingTests</td><td>Amount and date formats; bank CSV with preamble and debit/credit columns; signed amounts; missing header; invoice heuristics; running-balance statements; CSV formula neutralisation.</td></tr>
+    <tr><td>ImportFlowTests</td><td>Upload → review → approve; category/project matching; duplicate flagging on overlapping statements; per-row edit/reject; content/duplicate-file rejection; failed extraction; manual entry; CSV export.</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ 7 -->
+<section id="flows">
+  <h2>7. Process flows</h2>
+
+  <h3 id="flow-upload">7.1 Upload &amp; extraction</h3>
+  <div class="diagram"><pre class="mermaid">
+sequenceDiagram
+  actor U as User
+  participant V as document_upload view
+  participant F as DocumentUploadForm
+  participant S as services.process_document
+  participant X as extraction.extract
+  participant DB as PostgreSQL
+  participant FS as Media storage
+  U->>V: POST kind, file, account, project
+  V->>F: is_valid()
+  F->>F: extension allow-list, size, magic bytes
+  F->>DB: sha256 already uploaded?
+  alt invalid
+    F-->>U: form errors (200)
+  else valid
+    V->>FS: save file as documents/uuid.ext
+    V->>DB: INSERT SourceDocument (status=review)
+    V->>S: process_document(document, bytes)
+    S->>X: extract(kind, filename, bytes)
+    alt ExtractionError
+      S->>DB: status=failed, error=message
+    else rows extracted
+      S->>DB: match categories / projects
+      S->>DB: lookup fingerprints in Transaction
+      S->>DB: bulk INSERT ExtractedEntry (atomic)
+    end
+    V-->>U: redirect to review page
+  end
+  </pre></div>
+
+  <h4>Extraction routing</h4>
+  <div class="diagram"><pre class="mermaid">
+flowchart TD
+  A["extract(kind, filename, data)"] --> K{"kind?"}
+  K -- "bill / invoice" --> P{"PDF?"}
+  P -- yes --> T["pdfplumber text"]
+  T --> L{"text length 20 or more?"}
+  L -- no --> O1["Render pages at 200 dpi, Tesseract OCR"]
+  L -- yes --> H
+  O1 --> H
+  P -- "no (image)" --> O2["Pillow load, Tesseract OCR"]
+  O2 --> H["parse_invoice_text: total, date, ref, vendor, GSTIN"]
+  H --> R1["1 Row"]
+  K -- "bank_statement / csv" --> E{"extension?"}
+  E -- ".pdf" --> PT["pdfplumber tables"]
+  PT --> TB{"table rows parsed?"}
+  TB -- yes --> R2["Rows"]
+  TB -- no --> SL["parse_statement_lines (running balance)"]
+  SL --> R2
+  E -- ".xlsx" --> XL["read_xlsx"] --> PTB["parse_table"]
+  E -- ".csv" --> CS["read_csv"] --> PTB
+  PTB --> R2
+  </pre></div>
+
+  <h3 id="flow-review">7.2 Review &amp; approval</h3>
+  <div class="diagram"><pre class="mermaid">
+sequenceDiagram
+  actor U as Reviewer
+  participant V as document_review view
+  participant FS as EntryFormSet (50 rows)
+  participant S as services
+  participant DB as PostgreSQL
+  U->>V: GET /documents/id/
+  V->>DB: next 50 pending entries
+  V-->>U: editable grid + notes + duplicate badges
+  alt Approve all
+    U->>V: POST action=approve_all
+    V->>S: approve_all(document, user)
+    S->>DB: SELECT pending FOR UPDATE
+    loop each complete, non-duplicate entry
+      S->>DB: INSERT Transaction, UPDATE entry=approved
+    end
+    S->>DB: refresh document status
+  else Reject all
+    U->>V: POST action=reject_all
+    V->>DB: UPDATE pending to rejected
+  else Per-row decisions
+    U->>V: POST formset (edits + decision per row)
+    V->>FS: validate (approve needs date, amount, description)
+    V->>DB: atomic: save edits, post approved, mark rejected
+  end
+  V-->>U: redirect with summary message
+  </pre></div>
+
+  <h3 id="flow-states">7.3 Status lifecycles</h3>
+  <div class="grid">
+    <div class="diagram"><pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> review: upload saved
+  review --> failed: ExtractionError
+  review --> completed: no pending entries
+  completed --> [*]
+  failed --> [*]
+    </pre><p class="muted">SourceDocument.status</p></div>
+    <div class="diagram"><pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> pending: extracted
+  pending --> pending: edited / decide later
+  pending --> approved: approve (creates Transaction)
+  pending --> rejected: reject
+  approved --> [*]
+  rejected --> [*]
+    </pre><p class="muted">ExtractedEntry.status</p></div>
+  </div>
+
+  <h3 id="flow-manual">7.4 Manual entry</h3>
+  <div class="diagram"><pre class="mermaid">
+flowchart LR
+  U["User"] --> F["Manual entry form"] --> V{"valid?"}
+  V -- no --> F
+  V -- yes --> T["Transaction source=manual, created_by=user, fingerprint computed"]
+  T --> N{"Save and add another?"}
+  N -- yes --> F
+  N -- no --> L["Transactions register"]
+  </pre></div>
+
+  <h3 id="flow-reports">7.5 Reporting</h3>
+  <div class="diagram"><pre class="mermaid">
+flowchart LR
+  Q["GET /reports/?filters"] --> FF["TransactionFilterForm.filter"]
+  FF --> QS["Filtered Transaction queryset"]
+  QS --> EX{"export=csv?"}
+  EX -- yes --> CSV["Stream CSV, formula-safe cells"]
+  EX -- no --> AGG["Aggregations"]
+  AGG --> A1["Totals"]
+  AGG --> A2["By month (TruncMonth)"]
+  AGG --> A3["By project + budget remaining"]
+  AGG --> A4["By category"]
+  AGG --> A5["By account"]
+  AGG --> A6["Top 10 vendors"]
+  </pre></div>
+</section>
+
+<!-- ============================================================ 8 -->
+<section id="extraction-rules">
+  <h2>8. Extraction rules (detail)</h2>
+
+  <h3>8.1 Header column detection</h3>
+  <p>Header text is lower-cased, bracketed text removed, non-letters collapsed (e.g. <code>Chq./Ref.No.</code> → <code>chq/ref no</code>). Rules are tested in order; first match wins per column, and the first column for each field is used. A row is the header when it maps a <em>date</em> column and at least one of <em>amount / debit / credit</em>, within the first 40 rows.</p>
+  <table>
+    <tr><th>#</th><th>Field</th><th>Matches (regex)</th><th>Examples</th></tr>
+    <tr><td>1</td><td>balance (ignored)</td><td><code>balance</code></td><td>Closing Balance</td></tr>
+    <tr><td>2</td><td>type</td><td><code>^(dr/cr|cr/dr|debit/credit|type|transaction type|txn type)$</code></td><td>Dr/Cr, Type</td></tr>
+    <tr><td>3</td><td>debit</td><td><code>withdrawal|debit|^dr$|money out|paid out</code></td><td>Withdrawal Amt., Debit Amount</td></tr>
+    <tr><td>4</td><td>credit</td><td><code>deposit|credit|^cr$|money in|paid in</code></td><td>Deposit Amt., Credit</td></tr>
+    <tr><td>5</td><td>date</td><td><code>date</code></td><td>Txn Date, Value Date</td></tr>
+    <tr><td>6</td><td>reference</td><td><code>\bref|chq|cheque|\butr\b|invoice no|bill no</code></td><td>Chq./Ref.No., UTR</td></tr>
+    <tr><td>7</td><td>category</td><td><code>categor|expense head|ledger</code></td><td>Category</td></tr>
+    <tr><td>8</td><td>project</td><td><code>^project</code></td><td>Project, Project Code</td></tr>
+    <tr><td>9</td><td>description</td><td><code>narration|description|particular|detail|remark|memo</code></td><td>Narration, Particulars</td></tr>
+    <tr><td>10</td><td>counterparty</td><td><code>vendor|payee|party|merchant|beneficiary|supplier|customer</code></td><td>Vendor, Payee</td></tr>
+    <tr><td>11</td><td>amount</td><td><code>amount|\bamt\b</code></td><td>Amount, Transaction Amount</td></tr>
+  </table>
+
+  <h3>8.2 Direction (money in / out)</h3>
+  <ol>
+    <li>Debit/credit columns: net = credit − debit; positive → credit, negative → debit (note added if both present).</li>
+    <li>Single amount + type column: <code>dr/debit/withdraw/out/expense/payment…</code> → debit; <code>cr/credit/deposit/in/income/receipt…</code> → credit.</li>
+    <li>Signed amount only: if any negative values exist in the file, negative → debit, positive → credit.</li>
+    <li>Otherwise all rows default to debit with a "please verify" note.</li>
+    <li>PDF text statements: compare running balance with the previous balance (prev − amount = balance → debit; prev + amount = balance → credit). "Opening balance / B/F / brought forward" lines seed the balance.</li>
+  </ol>
+
+  <h3>8.3 Value parsing</h3>
+  <table>
+    <tr><th>Type</th><th>Accepted examples</th></tr>
+    <tr><td>Date</td><td>05/01/2026 · 05-01-26 · 05.01.2026 · 2026-01-05 · 05-Jan-2026 · 5th January 2026 · Jan 5, 2026 · 05 Sept 2026 · 05/01/2026 10:31:00 · Excel date cells</td></tr>
+    <tr><td>Amount</td><td>1,23,456.50 · ₹ 1,000 · Rs. 99 · INR 500 · (1,000.00) → −1000 · −250 · 250.00 Dr → −250 · 250.00 Cr · numeric Excel cells</td></tr>
+  </table>
+  <p class="warn">Ambiguous numeric dates are read as <strong>day/month/year</strong> (Indian convention). US-style month/day files must be converted or corrected during review.</p>
+
+  <h3>8.4 Bill / invoice heuristics</h3>
+  <table>
+    <tr><th>Field</th><th>Rule</th></tr>
+    <tr><td>Total</td><td>Search (bottom-up) for labels in priority order: grand total, total amount payable, amount payable, net payable, total payable, invoice total, total due, balance due, amount due, net amount, total amount, total (ignoring sub-total / total tax / total qty). Take the last amount on that line, or on the next line. Fallback: largest decimal amount in the document (flagged).</td></tr>
+    <tr><td>Date</td><td>Labels: invoice date, bill date, date of issue, inv date, receipt date, dated, date — first date after the label (same or next line). Fallback: first date anywhere.</td></tr>
+    <tr><td>Reference</td><td><code>(invoice|inv|bill|receipt) (no|number|num|#)</code> followed by an identifier containing a digit.</td></tr>
+    <tr><td>Vendor</td><td>First of the top 8 lines with ≥ 3 letters that isn't a title line (invoice, receipt, original, duplicate, page n…). Flagged as a guess.</td></tr>
+    <tr><td>GSTIN</td><td>Indian GSTIN pattern; up to 3 recorded in notes.</td></tr>
+    <tr><td>Description</td><td>"Invoice/Bill &lt;ref&gt; from &lt;vendor&gt;".</td></tr>
+  </table>
+
+  <h3>8.5 Limits</h3>
+  <table>
+    <tr><th>Limit</th><th>Value</th></tr>
+    <tr><td>Upload size</td><td>10 MB (configurable)</td></tr>
+    <tr><td>Rows per file</td><td>5 000</td></tr>
+    <tr><td>PDF pages</td><td>50 (text) / 5 (OCR)</td></tr>
+    <tr><td>OCR timeout</td><td>60 s per page image</td></tr>
+    <tr><td>Header search</td><td>first 40 rows</td></tr>
+    <tr><td>Stored raw text</td><td>100 000 characters</td></tr>
+    <tr><td>Review batch</td><td>50 entries per page</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ 9 -->
+<section id="statistics">
+  <h2>9. Statistics definitions</h2>
+  <table>
+    <tr><th>Metric</th><th>Definition</th><th>Where</th></tr>
+    <tr><td>Money in</td><td>Σ amount where direction = credit</td><td>Dashboard, register, reports</td></tr>
+    <tr><td>Total spent / Money out</td><td>Σ amount where direction = debit</td><td>Dashboard, register, reports</td></tr>
+    <tr><td>Net cash flow</td><td>Money in − Money out</td><td>Dashboard, reports</td></tr>
+    <tr><td>Total budget</td><td>Σ Project.budget</td><td>Dashboard</td></tr>
+    <tr><td>Budget remaining (company)</td><td>Total budget − Σ debit amounts linked to any project</td><td>Dashboard</td></tr>
+    <tr><td>Budget remaining (project)</td><td>Project.budget − project's money out within the current filter</td><td>Reports</td></tr>
+    <tr><td>Account balance</td><td>opening_balance + Σ credit − Σ debit for the account</td><td>Dashboard</td></tr>
+    <tr><td>By month</td><td>Group by <code>TruncMonth(date)</code>: count, in, out</td><td>Reports</td></tr>
+    <tr><td>By category / account</td><td>Group by FK name: count, in, out (unassigned shown separately)</td><td>Reports</td></tr>
+    <tr><td>Top vendors</td><td>Money out grouped by counterparty, top 10 by total</td><td>Reports</td></tr>
+  </table>
+  <p>All report figures respect the active filters: date from/to, project, account, category, direction, source and search text.</p>
+</section>
+
+<!-- ============================================================ 10 -->
+<section id="routes">
+  <h2>10. URL / route reference</h2>
+  <table>
+    <tr><th>Path</th><th>Name</th><th>Methods</th><th>Auth</th><th>Description</th></tr>
+    <tr><td><code>/</code></td><td>dashboard</td><td>GET</td><td>login</td><td>Company overview</td></tr>
+    <tr><td><code>/transactions/</code></td><td>transaction_list</td><td>GET</td><td>login</td><td>Register; query: date_from, date_to, project, account, category, direction, source, q, page</td></tr>
+    <tr><td><code>/transactions/new/</code></td><td>transaction_create</td><td>GET, POST</td><td>login</td><td>Manual entry</td></tr>
+    <tr><td><code>/documents/</code></td><td>document_list</td><td>GET</td><td>login</td><td>Uploaded documents</td></tr>
+    <tr><td><code>/documents/upload/</code></td><td>document_upload</td><td>GET, POST (multipart)</td><td>login</td><td>Upload &amp; extract</td></tr>
+    <tr><td><code>/documents/&lt;id&gt;/</code></td><td>document_review</td><td>GET, POST</td><td>login</td><td>Review; POST action=approve_all | reject_all | formset</td></tr>
+    <tr><td><code>/documents/&lt;id&gt;/download/</code></td><td>document_download</td><td>GET</td><td>login</td><td>Original file as attachment</td></tr>
+    <tr><td><code>/reports/</code></td><td>reports</td><td>GET</td><td>login</td><td>Statistics; same filters; <code>export=csv</code></td></tr>
+    <tr><td><code>/accounts/login/</code>, <code>/accounts/logout/</code></td><td>login, logout</td><td>GET/POST, POST</td><td>—</td><td>Authentication</td></tr>
+    <tr><td><code>/admin/</code></td><td>admin:*</td><td>—</td><td>staff</td><td>Django admin</td></tr>
+    <tr><td><code>/healthz/</code></td><td>healthz</td><td>GET</td><td>— (public)</td><td>Liveness/readiness: runs <code>SELECT 1</code> on the database, returns <code>ok</code>. Used by the container healthcheck and smoke tests; exempt from HTTPS redirect.</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ 11 -->
+<section id="security">
+  <h2>11. Security controls</h2>
+  <table>
+    <tr><th>Area</th><th>Control</th></tr>
+    <tr><td>Authentication</td><td>All finance views use <code>login_required</code>; Django password validators; logout is POST-only with CSRF.</td></tr>
+    <tr><td>Secrets</td><td>Startup fails without a real <code>DJANGO_SECRET_KEY</code>; secrets live in an untracked <code>.env</code>; DEBUG off by default.</td></tr>
+    <tr><td>Network exposure</td><td>Web bound to 127.0.0.1; DB on internal Docker network with no published port; container runs as non-root.</td></tr>
+    <tr><td>CSRF / clickjacking / sniffing</td><td>CSRF middleware on all forms; <code>X_FRAME_OPTIONS=DENY</code>; <code>nosniff</code>; HttpOnly session and CSRF cookies.</td></tr>
+    <tr><td>File upload</td><td>Per-kind extension allow-list, size limit, magic-byte validation, random UUID storage names (no user-controlled paths), SHA-256 de-duplication.</td></tr>
+    <tr><td>File parsing</td><td>Page/row/column caps; Pillow decompression-bomb protection; openpyxl read-only with defusedxml; OCR timeout; parser exceptions converted to safe messages.</td></tr>
+    <tr><td>File serving</td><td>Media is not served publicly; downloads go through an authenticated view with <code>Content-Disposition: attachment</code>.</td></tr>
+    <tr><td>Injection</td><td>ORM-only queries; template auto-escaping (raw OCR text rendered escaped); CSV export prefixes cells starting with <code>= + - @</code> tab/CR to stop spreadsheet formula injection.</td></tr>
+    <tr><td>Data integrity</td><td>DB check constraints, PROTECT foreign keys, atomic approvals with row locks, human approval before posting.</td></tr>
+    <tr><td>Privacy</td><td>All extraction runs locally; only last 4 digits of account numbers are stored.</td></tr>
+  </table>
+  <p class="warn">Cloud deployments (§17) run behind Caddy with automatic HTTPS and set <code>DJANGO_SECURE=true</code>, which enables secure cookies, HTTPS redirect and HSTS. Still to do for wider production use: per-user object permissions if multiple teams share the system, off-site backups, and moving extraction to a background worker.</p>
+</section>
+
+<!-- ============================================================ 12 -->
+<section id="config">
+  <h2>12. Configuration (environment variables)</h2>
+  <table>
+    <tr><th>Variable</th><th>Default</th><th>Purpose</th></tr>
+    <tr><td><code>DJANGO_SECRET_KEY</code></td><td><em>required</em></td><td>Cryptographic signing key.</td></tr>
+    <tr><td><code>DJANGO_DEBUG</code></td><td>False</td><td>Never enable outside local debugging.</td></tr>
+    <tr><td><code>DJANGO_ALLOWED_HOSTS</code></td><td>localhost,127.0.0.1</td><td>Comma-separated host names.</td></tr>
+    <tr><td><code>POSTGRES_DB</code> / <code>POSTGRES_USER</code> / <code>POSTGRES_PASSWORD</code></td><td>realestate / realestate_app / —</td><td>Database credentials (shared by web and db containers).</td></tr>
+    <tr><td><code>POSTGRES_HOST</code> / <code>POSTGRES_PORT</code></td><td>db / 5432 (set in compose)</td><td>Database location.</td></tr>
+    <tr><td><code>DOCUMENT_MAX_UPLOAD_MB</code></td><td>10</td><td>Upload size limit.</td></tr>
+    <tr><td><code>DJANGO_CSRF_TRUSTED_ORIGINS</code></td><td>(empty)</td><td>Comma-separated origins, e.g. <code>https://finance.example.com</code>. Required in the cloud.</td></tr>
+    <tr><td><code>DJANGO_SECURE</code></td><td>False (forced <code>true</code> by <code>compose.prod.yaml</code>)</td><td>Trust <code>X-Forwarded-Proto</code> from Caddy, redirect to HTTPS, Secure cookies, HSTS, referrer policy.</td></tr>
+    <tr><td><code>DJANGO_HSTS_SECONDS</code></td><td>3600</td><td>HSTS max-age. Raise to 31536000 once HTTPS is confirmed stable.</td></tr>
+    <tr><td><code>APP_DOMAIN</code></td><td><em>required in cloud</em></td><td>Public host name Caddy obtains a TLS certificate for.</td></tr>
+    <tr><td><code>WEB_IMAGE</code> / <code>IMAGE_TAG</code></td><td>set by pipeline</td><td>Container image and tag to run (<code>ghcr.io/&lt;owner&gt;/&lt;repo&gt;</code> : 12-char commit SHA).</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ 13 -->
+<section id="operations">
+  <h2>13. Deployment &amp; operations</h2>
+  <h3>First start</h3>
+<pre class="code">Copy-Item .env.example .env          # then set DJANGO_SECRET_KEY and POSTGRES_PASSWORD
+docker compose up --build -d
+docker compose exec web python manage.py createsuperuser
+# open http://localhost:8000</pre>
+  <h3>Initial data setup (admin)</h3>
+  <ol>
+    <li>Create <strong>Accounts</strong> (bank, cash, card) with opening balances and last 4 digits.</li>
+    <li>Create <strong>Categories</strong> (Materials, Labour, Consultants, Approvals &amp; Fees, Booking Advance, Sales Receipts …).</li>
+    <li>Create <strong>Projects</strong> with codes and budgets.</li>
+    <li>Create user accounts for accountants (non-staff users can use the app but not the admin).</li>
+  </ol>
+  <h3>Day-to-day</h3>
+  <ol>
+    <li>Upload bills/invoices as they arrive; upload bank statements per account monthly.</li>
+    <li>Review each document: fix vendor/amount/date, assign category and project, approve.</li>
+    <li>Record cash/other items via Manual entry.</li>
+    <li>Use Reports with filters for statistics; export CSV for accountants/auditors.</li>
+  </ol>
+  <h3>Useful commands</h3>
+<pre class="code">docker compose logs -f web
+docker compose ps
+docker compose run --rm web python manage.py makemigrations --check --dry-run
+docker compose run --rm web python manage.py test
+docker compose down            # stop (data kept)
+# docker compose down -v       # DELETES database and uploaded files</pre>
+  <p class="warn">Back up the <code>postgres_data</code> and <code>uploads_data</code> volumes before upgrading; migration 0002 converts existing expenses into transactions.</p>
+</section>
+
+<!-- ============================================================ 14 -->
+<section id="testing">
+  <h2>14. Testing</h2>
+  <p>Run <code>docker compose run --rm web python manage.py test</code>. Django creates a throwaway test database; uploaded files in tests go to a temporary media directory. See §6.11 for coverage. Pure parsing functions in <code>finance.extraction</code> are tested with <code>SimpleTestCase</code> (no DB).</p>
+  <h3>Suggested manual test files</h3>
+  <ul>
+    <li>Bank CSV/XLSX exports from each bank you use (with and without preamble rows).</li>
+    <li>A text-based PDF statement and a scanned one (should fail with guidance).</li>
+    <li>A GST tax invoice PDF, a photographed receipt, and a multi-page scanned bill.</li>
+    <li>The same statement uploaded twice (blocked) and an overlapping next-month statement (duplicates flagged).</li>
+  </ul>
+</section>
+
+<!-- ============================================================ 15 -->
+<section id="limits">
+  <h2>15. Limitations &amp; roadmap</h2>
+  <table>
+    <tr><th>Current limitation</th><th>Possible next step</th></tr>
+    <tr><td>Extraction is synchronous inside the web request.</td><td>Background worker (Celery/RQ or Django tasks) with progress status.</td></tr>
+    <tr><td>Rule-based heuristics; line items are not captured.</td><td>Pluggable ML/LLM extractor (local model for privacy), invoice line items, GST breakdown (CGST/SGST/IGST).</td></tr>
+    <tr><td>No automatic categorisation.</td><td>Vendor → category rules learned from approved history.</td></tr>
+    <tr><td>Single company, flat permissions.</td><td>Per-project roles, approval workflow (maker/checker), audit log.</td></tr>
+    <tr><td>No reconciliation between bills and bank lines.</td><td>Match bills/invoices to bank debits (amount ± date window) and mark as paid.</td></tr>
+    <tr><td>No receivables/payables ageing, no GST/TDS reports.</td><td>Due dates, ageing buckets, GST returns support, TDS tracking.</td></tr>
+    <tr><td>Tables only; no charts.</td><td>Charts on dashboard and reports.</td></tr>
+    <tr><td>No automated backups.</td><td>Scheduled <code>pg_dump</code> + volume backup with restore drill.</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ 16 -->
+<section id="glossary">
+  <h2>16. Glossary</h2>
+  <table>
+    <tr><th>Term</th><th>Meaning</th></tr>
+    <tr><td>Debit / Money out</td><td>Payment leaving an account (expense, purchase, withdrawal).</td></tr>
+    <tr><td>Credit / Money in</td><td>Receipt into an account (booking advance, sale proceeds, deposit).</td></tr>
+    <tr><td>Source document</td><td>Any uploaded file from which entries are extracted.</td></tr>
+    <tr><td>Extracted entry</td><td>A proposed transaction awaiting human review.</td></tr>
+    <tr><td>Fingerprint</td><td>Hash of key transaction fields used to detect duplicates.</td></tr>
+    <tr><td>GSTIN</td><td>15-character Indian Goods and Services Tax identification number.</td></tr>
+    <tr><td>UTR</td><td>Unique Transaction Reference for NEFT/RTGS/IMPS/UPI transfers.</td></tr>
+    <tr><td>OCR</td><td>Optical character recognition — reading text from images/scans (Tesseract).</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ 17 -->
+<section id="cloud">
+  <h2>17. Cloud deployment &amp; CI/CD pipeline</h2>
+  <p>
+    The cloud setup uses only open-source components and needs no vendor-specific services: any Ubuntu 24.04 virtual
+    machine (Hetzner, DigitalOcean, OVH, Linode, AWS Lightsail, Azure/GCP VM, Oracle Cloud, or an on-premise server)
+    runs the same Docker Compose stack used locally, with <strong>Caddy</strong> added in front for automatic HTTPS.
+    <strong>GitHub Actions</strong> tests every change, builds the image, pushes it to <strong>GitHub Container Registry
+    (GHCR)</strong>, deploys to <strong>staging</strong>, tests there, and, after manual approval, deploys the same image to
+    <strong>production</strong>.
+  </p>
+  <div class="grid">
+    <div class="card"><h4>Open-source stack</h4>Docker Engine, Docker Compose, Caddy 2 (Let's Encrypt), PostgreSQL 17, Tesseract, Django, Gunicorn.</div>
+    <div class="card"><h4>Minimum server size</h4>2 vCPU, 4 GB RAM, 40 GB SSD per environment. OCR is the main CPU consumer.</div>
+    <div class="card"><h4>Environments</h4><code>staging</code> (auto-deploy from <code>main</code>) and <code>production</code> (manual approval gate).</div>
+    <div class="card"><h4>Release unit</h4>One immutable image per commit: <code>ghcr.io/&lt;owner&gt;/&lt;repo&gt;:&lt;sha12&gt;</code>. Staging and production run the identical image.</div>
+  </div>
+
+  <h3 id="cloud-arch">17.1 Target architecture</h3>
+  <div class="diagram"><pre class="mermaid">
+flowchart LR
+  dev["Developer laptop"] -- "git push" --> gh["GitHub repository"]
+  gh --> actions["GitHub Actions"]
+  actions -- "docker push" --> ghcr[("GHCR image registry")]
+  actions -- "SSH: copy compose files + remote_deploy.sh" --> vm
+  subgraph vm["Cloud VM (Ubuntu 24.04)"]
+    caddy["Caddy :80/:443<br/>auto HTTPS"] --> web["web: Django + Gunicorn<br/>+ Tesseract"]
+    web --> db[("PostgreSQL 17<br/>internal network only")]
+    web --> media[("uploads_data volume")]
+    db --> pgvol[("postgres_data volume")]
+    backups["backups/*.sql.gz"]
+  end
+  ghcr -- "docker compose pull" --> web
+  user["Users (browser)"] -- "HTTPS" --> caddy
+  </pre></div>
+  <ul>
+    <li>Only ports 22, 80 and 443 are open. PostgreSQL has no published port; the web container is reachable only through Caddy.</li>
+    <li>Caddy obtains and renews TLS certificates automatically and forwards <code>X-Forwarded-Proto</code>; Django trusts it only when <code>DJANGO_SECURE=true</code>.</li>
+    <li>Database migrations run automatically when the new web container starts (Dockerfile <code>CMD</code>), right after a pre-deploy database backup.</li>
+  </ul>
+
+  <h3 id="cloud-pipeline">17.2 Pipeline stages</h3>
+  <div class="diagram"><pre class="mermaid">
+flowchart LR
+  pr["Pull request"] --> t1["Test"]
+  push["Push / merge to main"] --> t2["Test"] --> b["Build &amp; push image"] --> s["Deploy staging"] --> st["In-cloud tests<br/>+ smoke tests"] --> gate{"Manual approval<br/>(production environment)"} --> p["Deploy production"] --> ps["Smoke tests"]
+  </pre></div>
+  <table>
+    <tr><th>Stage</th><th>Runs on</th><th>What it does</th><th>Fails when</th></tr>
+    <tr><td><strong>Test</strong></td><td>Every PR and push</td><td>Starts a PostgreSQL 17 service container, installs Tesseract and requirements, runs <code>manage.py check</code>, <code>check --deploy</code> (secure mode), <code>makemigrations --check</code>, the full test suite, and <code>collectstatic</code>.</td><td>Any test fails, a model change has no migration, or static files can't build.</td></tr>
+    <tr><td><strong>Build &amp; push</strong></td><td><code>main</code> only</td><td>Builds the Dockerfile with layer caching, pushes <code>:&lt;sha12&gt;</code> and <code>:main</code> tags to GHCR, then verifies Tesseract and Python imports inside the image.</td><td>Build error or missing runtime dependency.</td></tr>
+    <tr><td><strong>Deploy staging</strong></td><td>After build</td><td>SSH to the staging VM, copy compose files, back up the database, <code>docker compose pull</code>, <code>up --wait</code> (waits for the <code>/healthz/</code> healthcheck).</td><td>Container doesn't become healthy within 5 minutes.</td></tr>
+    <tr><td><strong>In-cloud tests</strong></td><td>Staging</td><td>Runs <code>check --deploy</code> and the full Django test suite inside the deployed image against the staging PostgreSQL server (a throwaway <code>test_*</code> database).</td><td>Environment-specific failures (OCR binary, DB version, permissions).</td></tr>
+    <tr><td><strong>Smoke tests</strong></td><td>Staging and production</td><td><code>scripts/smoke_test.sh</code> checks health, login pages, that protected pages redirect to login, HTTP&rarr;HTTPS redirect, HSTS, <code>X-Frame-Options</code>, and Secure CSRF cookie.</td><td>Any check fails.</td></tr>
+    <tr><td><strong>Deploy production</strong></td><td>After staging passes + approval</td><td>Same steps as staging with the identical image tag (no in-cloud test suite, to avoid load on production).</td><td>As staging.</td></tr>
+  </table>
+
+  <h3 id="cloud-files">17.3 Deployment files in the repository</h3>
+  <table>
+    <tr><th>File</th><th>Purpose</th></tr>
+    <tr><td><code>.github/workflows/ci-cd.yml</code></td><td>Main pipeline: test → build → deploy-staging → deploy-production.</td></tr>
+    <tr><td><code>.github/workflows/deploy.yml</code></td><td>Reusable deploy job (SSH, remote deploy, in-cloud tests, smoke tests) called once per environment.</td></tr>
+    <tr><td><code>compose.prod.yaml</code></td><td>Override for the cloud: runs the registry image instead of building, removes the localhost port, adds the web healthcheck and the Caddy service.</td></tr>
+    <tr><td><code>Caddyfile</code></td><td>Reverse proxy for <code>{$APP_DOMAIN}</code> with gzip and a 12 MB request limit.</td></tr>
+    <tr><td><code>scripts/remote_deploy.sh</code></td><td>Runs on the server: GHCR login, pre-deploy <code>pg_dump</code> (keeps last 14), pull, restart, wait for health, record <code>deployed.env</code> / <code>previous.env</code>.</td></tr>
+    <tr><td><code>scripts/smoke_test.sh</code></td><td>Post-deploy HTTP checks against the public URL.</td></tr>
+    <tr><td><code>.gitattributes</code></td><td>Forces LF line endings for shell scripts, YAML and the Caddyfile (required when committing from Windows).</td></tr>
+    <tr><td><code>config/urls.py</code> → <code>/healthz/</code></td><td>Health endpoint used by Docker and the smoke tests.</td></tr>
+    <tr><td><code>config/settings.py</code></td><td><code>DJANGO_SECURE</code> and <code>DJANGO_CSRF_TRUSTED_ORIGINS</code> settings for HTTPS deployments.</td></tr>
+  </table>
+
+  <h3 id="cloud-step1">17.4 Step 1 - Push the code to GitHub (Windows PowerShell, on your laptop)</h3>
+  <p>Install <a href="https://cli.github.com/">GitHub CLI</a> and Git first. Replace <code>&lt;github-user&gt;</code> with your account or organisation.</p>
+<pre class="code">cd C:\Users\ltummala\Documents\Workspace\Personal\real-estate-finance
+gh auth login                                   # choose GitHub.com, HTTPS, browser login
+
+git init -b main                                # skip if already a git repo
+git add .
+git status                                      # confirm .env, .venv and media are NOT listed
+git commit -m "Real estate finance app with CI/CD pipeline"
+
+gh repo create &lt;github-user&gt;/real-estate-finance --private --source . --remote origin --push
+# Existing repo instead:  git remote add origin https://github.com/&lt;github-user&gt;/real-estate-finance.git ; git push -u origin main</pre>
+  <p class="note">The first push already triggers the <strong>Test</strong> and <strong>Build</strong> jobs. The deploy jobs will fail until Steps 2-4 are done; that is expected. Re-run them afterwards from the Actions tab or with <code>gh run rerun --failed</code>.</p>
+
+  <h3 id="cloud-step2">17.5 Step 2 - Provision the servers (repeat for staging and production)</h3>
+  <ol>
+    <li>Create an Ubuntu 24.04 VM at any provider (2 vCPU / 4 GB). Add your personal SSH key during creation.</li>
+    <li>Create a DNS <code>A</code> record pointing to the VM's public IP, e.g. <code>staging-finance.example.com</code> and <code>finance.example.com</code>. Caddy needs this before the first deploy to issue certificates.</li>
+    <li>Install Docker, create a dedicated <code>deploy</code> user and open the firewall (run on the server as root or a sudo user):</li>
+  </ol>
+<pre class="code">ssh root@&lt;server-ip&gt;
+
+apt-get update &amp;&amp; apt-get -y upgrade
+curl -fsSL https://get.docker.com | sh                 # official Docker Engine + Compose plugin
+docker compose version                                 # must be v2.24 or newer (needed for !reset in compose.prod.yaml)
+
+adduser --disabled-password --gecos "" deploy
+usermod -aG docker deploy                              # docker group = root-equivalent: use this user only for deploys
+mkdir -p /opt/real-estate-finance
+chown deploy:deploy /opt/real-estate-finance
+
+ufw allow OpenSSH
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw allow 443/udp
+ufw --force enable
+
+# Optional hardening: disable SSH password login
+sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
+systemctl reload ssh</pre>
+  <p>Create a dedicated deploy key on your laptop (PowerShell) and install it for the <code>deploy</code> user. Press Enter twice for an empty passphrase (GitHub Actions cannot type one).</p>
+<pre class="code">ssh-keygen -t ed25519 -f "$HOME\.ssh\ref_deploy_staging" -C "github-actions-staging"
+
+Get-Content "$HOME\.ssh\ref_deploy_staging.pub" | ssh root@&lt;staging-ip&gt; `
+  "install -d -m 700 -o deploy -g deploy /home/deploy/.ssh &amp;&amp; cat &gt;&gt; /home/deploy/.ssh/authorized_keys &amp;&amp; chown deploy:deploy /home/deploy/.ssh/authorized_keys &amp;&amp; chmod 600 /home/deploy/.ssh/authorized_keys"
+
+ssh -i "$HOME\.ssh\ref_deploy_staging" deploy@&lt;staging-ip&gt; "docker ps"   # must work without a password
+
+# Repeat with ref_deploy_production / &lt;production-ip&gt;</pre>
+
+  <h3 id="cloud-step3">17.6 Step 3 - Create the server <code>.env</code> (once per server)</h3>
+  <p>Secrets are generated on the server and never leave it. Run as the <code>deploy</code> user and change the domain:</p>
+<pre class="code">ssh -i ~/.ssh/ref_deploy_staging deploy@&lt;staging-ip&gt;
+cd /opt/real-estate-finance
+
+DOMAIN=staging-finance.example.com
+cat &gt; .env &lt;&lt;EOF
+DJANGO_SECRET_KEY=$(openssl rand -base64 48 | tr -d '\n/+=')
+DJANGO_DEBUG=False
+DJANGO_ALLOWED_HOSTS=$DOMAIN,localhost
+DJANGO_CSRF_TRUSTED_ORIGINS=https://$DOMAIN
+DJANGO_HSTS_SECONDS=3600
+APP_DOMAIN=$DOMAIN
+DOCUMENT_MAX_UPLOAD_MB=10
+POSTGRES_DB=realestate
+POSTGRES_USER=realestate_app
+POSTGRES_PASSWORD=$(openssl rand -hex 24)
+EOF
+chmod 600 .env
+mkdir -p backups</pre>
+  <p class="warn"><code>localhost</code> must stay in <code>DJANGO_ALLOWED_HOSTS</code> because the container healthcheck calls <code>http://localhost:8000/healthz/</code>. Keep a copy of <code>.env</code> in your password manager: losing <code>POSTGRES_PASSWORD</code> locks you out of the existing database volume.</p>
+
+  <h3 id="cloud-step4">17.7 Step 4 - GitHub environments, secrets and variables (PowerShell, on your laptop)</h3>
+<pre class="code">$repo = "&lt;github-user&gt;/real-estate-finance"
+
+# Create the two environments
+gh api -X PUT "repos/$repo/environments/staging"
+gh api -X PUT "repos/$repo/environments/production"
+
+# ---- staging ----
+gh secret set SSH_HOST --env staging --repo $repo --body "&lt;staging-ip&gt;"
+gh secret set SSH_USER --env staging --repo $repo --body "deploy"
+Get-Content -Raw "$HOME\.ssh\ref_deploy_staging" | gh secret set SSH_PRIVATE_KEY --env staging --repo $repo
+ssh-keyscan -t ed25519 &lt;staging-ip&gt; | gh secret set SSH_KNOWN_HOSTS --env staging --repo $repo
+gh variable set APP_URL --env staging --repo $repo --body "https://staging-finance.example.com"
+
+# ---- production ----
+gh secret set SSH_HOST --env production --repo $repo --body "&lt;production-ip&gt;"
+gh secret set SSH_USER --env production --repo $repo --body "deploy"
+Get-Content -Raw "$HOME\.ssh\ref_deploy_production" | gh secret set SSH_PRIVATE_KEY --env production --repo $repo
+ssh-keyscan -t ed25519 &lt;production-ip&gt; | gh secret set SSH_KNOWN_HOSTS --env production --repo $repo
+gh variable set APP_URL --env production --repo $repo --body "https://finance.example.com"
+
+gh secret list --env staging --repo $repo
+gh variable list --env production --repo $repo</pre>
+  <p>Then in the browser: <strong>GitHub → repository → Settings → Environments → production</strong>:</p>
+  <ul>
+    <li>Tick <strong>Required reviewers</strong> and add yourself (and/or a second approver). This is the manual approval gate before production.</li>
+    <li>Under <strong>Deployment branches and tags</strong>, choose <em>Selected branches</em> and allow only <code>main</code>.</li>
+    <li>Recommended: <strong>Settings → Branches → Add rule</strong> for <code>main</code> requiring the <em>Test</em> check to pass before merging.</li>
+  </ul>
+  <table>
+    <tr><th>Name</th><th>Type</th><th>Scope</th><th>Value</th></tr>
+    <tr><td><code>SSH_HOST</code></td><td>Secret</td><td>per environment</td><td>Server IP or host name</td></tr>
+    <tr><td><code>SSH_USER</code></td><td>Secret</td><td>per environment</td><td><code>deploy</code></td></tr>
+    <tr><td><code>SSH_PRIVATE_KEY</code></td><td>Secret</td><td>per environment</td><td>Private half of the deploy key</td></tr>
+    <tr><td><code>SSH_KNOWN_HOSTS</code></td><td>Secret</td><td>per environment</td><td>Output of <code>ssh-keyscan</code> (prevents man-in-the-middle on SSH)</td></tr>
+    <tr><td><code>APP_URL</code></td><td>Variable</td><td>per environment</td><td>Public HTTPS URL used by smoke tests and shown on the deployment</td></tr>
+    <tr><td><code>APP_DIR</code></td><td>Variable (optional)</td><td>per environment</td><td>Defaults to <code>/opt/real-estate-finance</code></td></tr>
+    <tr><td><code>GITHUB_TOKEN</code></td><td>Automatic</td><td>—</td><td>Pushes the image; also passed (via stdin, short-lived) to the server to pull it</td></tr>
+  </table>
+
+  <h3 id="cloud-step5">17.8 Step 5 - First deployment</h3>
+<pre class="code"># Laptop (PowerShell): trigger the pipeline and follow it
+gh workflow run ci-cd.yml --ref main --repo $repo
+gh run watch --repo $repo                       # approve production in the browser when prompted
+# or approve from the Actions page: Review deployments → production → Approve and deploy
+
+# After staging is green, create the first admin user on each server
+ssh -i ~/.ssh/ref_deploy_staging deploy@&lt;staging-ip&gt;
+cd /opt/real-estate-finance
+set -a; . ./deployed.env; set +a
+docker compose -f compose.yaml -f compose.prod.yaml exec web python manage.py createsuperuser</pre>
+  <p>From now on, the normal release flow is:</p>
+<pre class="code">git checkout -b feature/my-change
+# ...edit code...
+git add . ; git commit -m "Describe the change"
+git push -u origin feature/my-change
+gh pr create --fill                             # Test job runs on the PR
+gh pr checks --watch
+gh pr merge --squash --delete-branch            # merge → build → staging → approval → production</pre>
+
+  <h3 id="cloud-testing">17.9 Testing in the cloud</h3>
+  <table>
+    <tr><th>Layer</th><th>Where</th><th>How to run manually</th></tr>
+    <tr><td>Unit + integration tests</td><td>GitHub runner with PostgreSQL service</td><td>Automatic on every PR / push</td></tr>
+    <tr><td>Deployment checks</td><td>Staging container</td><td><code>docker compose -f compose.yaml -f compose.prod.yaml run --rm --no-deps web python manage.py check --deploy</code></td></tr>
+    <tr><td>Full suite on staging infrastructure</td><td>Staging container + staging PostgreSQL (throwaway <code>test_realestate</code> DB)</td><td><code>docker compose -f compose.yaml -f compose.prod.yaml run --rm --no-deps -e DJANGO_SECURE=false web python manage.py test --noinput</code></td></tr>
+    <tr><td>Smoke tests</td><td>Any machine with bash + curl (Git Bash/WSL on Windows)</td><td><code>bash scripts/smoke_test.sh https://staging-finance.example.com</code></td></tr>
+    <tr><td>User acceptance testing</td><td>Staging URL in a browser</td><td>Upload the sample files from §14 (bank CSV/XLSX/PDF, GST invoice, photographed receipt), approve, check Reports and CSV export.</td></tr>
+  </table>
+  <p class="note">Run the manual commands on the server after <code>cd /opt/real-estate-finance; set -a; . ./deployed.env; set +a</code> so <code>WEB_IMAGE</code>/<code>IMAGE_TAG</code> are set. Use staging, not production, for test uploads; production data should only contain real records.</p>
+
+  <h3 id="cloud-ops">17.10 Rollback, backups and operations</h3>
+  <h4>Shortcut used below (on the server)</h4>
+<pre class="code">cd /opt/real-estate-finance
+alias dc='docker compose -f compose.yaml -f compose.prod.yaml'
+set -a; . ./deployed.env; set +a</pre>
+  <h4>Status and logs</h4>
+<pre class="code">dc ps
+dc logs -f --tail 200 web
+dc logs --tail 100 caddy
+curl -s https://finance.example.com/healthz/
+cat deployed.env previous.env</pre>
+  <h4>Roll back to the previous release</h4>
+<pre class="code">set -a; . ./previous.env; set +a
+dc up -d --wait web
+# Or redeploy any earlier commit from GitHub: Actions → CI/CD → (old run) → Re-run all jobs</pre>
+  <p class="warn">Rolling back the image does not undo database migrations. If the release included a migration, restore the matching pre-deploy backup as shown below.</p>
+  <h4>Backups</h4>
+<pre class="code"># Every deploy writes backups/pre-deploy-&lt;timestamp&gt;.sql.gz automatically (last 14 kept).
+# Nightly database + uploads backup: crontab -e  (as deploy user)
+15 2 * * * cd /opt/real-estate-finance &amp;&amp; docker compose -f compose.yaml -f compose.prod.yaml exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB"' | gzip &gt; backups/nightly-$(date +\%F).sql.gz
+30 2 * * * docker run --rm -v real-estate-finance_uploads_data:/data:ro -v /opt/real-estate-finance/backups:/backup alpine tar czf /backup/uploads-$(date +\%F).tgz -C /data .
+45 2 * * * find /opt/real-estate-finance/backups -name 'nightly-*' -o -name 'uploads-*' | xargs -r ls -1t | tail -n +31 | xargs -r rm --
+
+# Copy backups off the server (open source: restic or rclone), e.g. from your laptop:
+scp -i ~/.ssh/ref_deploy_production "deploy@&lt;production-ip&gt;:/opt/real-estate-finance/backups/*" .\backups\</pre>
+  <h4>Restore a database backup</h4>
+<pre class="code">dc stop web
+gunzip -c backups/pre-deploy-YYYYMMDD-HHMMSS.sql.gz | dc exec -T db sh -c \
+  'psql -U "$POSTGRES_USER" -d postgres -c "DROP DATABASE IF EXISTS $POSTGRES_DB WITH (FORCE)" -c "CREATE DATABASE $POSTGRES_DB" &amp;&amp; psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+dc up -d --wait web</pre>
+  <p class="warn">The restore drops the current database. Practise it on staging first and take a fresh backup before restoring in production.</p>
+  <h4>Routine maintenance</h4>
+<pre class="code">sudo apt-get update &amp;&amp; sudo apt-get -y upgrade      # monthly OS patches (reboot if required)
+dc pull caddy db &amp;&amp; dc up -d --wait                  # refresh Caddy / PostgreSQL 17 minor versions
+docker system df                                     # disk usage
+df -h /</pre>
+  <p>After a few weeks of stable HTTPS, raise <code>DJANGO_HSTS_SECONDS</code> to <code>31536000</code> in the server <code>.env</code> and run <code>dc up -d --wait web</code>.</p>
+
+  <h3 id="cloud-troubleshoot">17.11 Troubleshooting</h3>
+  <table>
+    <tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr>
+    <tr><td><code>Host key verification failed</code> in deploy job</td><td><code>SSH_KNOWN_HOSTS</code> missing or server rebuilt</td><td>Re-run the <code>ssh-keyscan … | gh secret set SSH_KNOWN_HOSTS</code> command.</td></tr>
+    <tr><td><code>Permission denied (publickey)</code></td><td>Wrong key or not in <code>/home/deploy/.ssh/authorized_keys</code></td><td>Repeat the key install step; test with <code>ssh -i … deploy@host</code>.</td></tr>
+    <tr><td><code>denied</code> / <code>unauthorized</code> pulling from ghcr.io</td><td>Package not linked to the repo</td><td>GitHub → Packages → real-estate-finance → Package settings → Manage Actions access → add the repository with Read.</td></tr>
+    <tr><td><code>Set APP_DOMAIN</code> / <code>Set WEB_IMAGE</code> errors</td><td>Missing server <code>.env</code> value, or <code>deployed.env</code> not sourced</td><td>Check Step 3; run <code>set -a; . ./deployed.env; set +a</code>.</td></tr>
+    <tr><td>Web container unhealthy, logs show <code>DisallowedHost</code></td><td><code>localhost</code> or the domain missing from <code>DJANGO_ALLOWED_HOSTS</code></td><td>Fix <code>.env</code>, then <code>dc up -d --wait web</code>.</td></tr>
+    <tr><td>Browser certificate error</td><td>DNS not yet pointing at the VM, or ports 80/443 blocked</td><td>Check <code>dc logs caddy</code>, the DNS A record and the cloud provider's firewall.</td></tr>
+    <tr><td>403 CSRF failure on login</td><td><code>DJANGO_CSRF_TRUSTED_ORIGINS</code> missing <code>https://</code> domain</td><td>Fix <code>.env</code> and restart web.</td></tr>
+    <tr><td>Uploads time out</td><td>Large scanned PDFs (OCR)</td><td>Gunicorn timeout is 180 s; split files or move extraction to a background worker (see §15).</td></tr>
+    <tr><td><code>!reset</code> not recognised</td><td>Old Docker Compose</td><td>Upgrade to Compose v2.24+ (<code>curl -fsSL https://get.docker.com | sh</code>).</td></tr>
+  </table>
+</section>
+
+<p class="muted" style="text-align:center">Diagrams are rendered with Mermaid (loaded from jsDelivr). Offline, the diagram source text is shown instead.</p>
+</main>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, securityLevel: "strict", theme: "default", er: { useMaxWidth: true } });
+</script>
+</body>
+</html>

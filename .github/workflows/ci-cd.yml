@@ -1,0 +1,128 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: realestate
+          POSTGRES_USER: realestate_app
+          POSTGRES_PASSWORD: ci-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U realestate_app -d realestate"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DJANGO_SECRET_KEY: ci-only-key-not-used-anywhere-else-7f3a9c1e5b2d8f4a6c0e9b7d
+      POSTGRES_DB: realestate
+      POSTGRES_USER: realestate_app
+      POSTGRES_PASSWORD: ci-only-password
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install OCR engine
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Django system checks
+        run: |
+          python manage.py check
+          DJANGO_SECURE=true DJANGO_ALLOWED_HOSTS=example.com python manage.py check --deploy
+      - name: Migrations are up to date
+        run: python manage.py makemigrations --check --dry-run
+      - name: Unit and integration tests
+        run: python manage.py test --verbosity 2
+      - name: Static files build
+        run: python manage.py collectstatic --noinput
+
+  build:
+    name: Build and push image
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        name: Image name
+        run: |
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.image }}:main
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Verify image contents
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
+        run: |
+          docker run --rm "$IMAGE" tesseract --version
+          docker run --rm -e DJANGO_SECRET_KEY=image-check-only-key-0123456789abcdefghijklmn "$IMAGE" \
+            python -c "import django, pdfplumber, pytesseract, openpyxl; print('imports ok')"
+
+  deploy-staging:
+    name: Deploy to staging
+    needs: build
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+      image: ${{ needs.build.outputs.image }}
+      tag: ${{ needs.build.outputs.tag }}
+      run_test_suite: true
+    secrets: inherit
+    permissions:
+      contents: read
+      packages: read
+
+  deploy-production:
+    name: Deploy to production
+    needs: [build, deploy-staging]
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+      image: ${{ needs.build.outputs.image }}
+      tag: ${{ needs.build.outputs.tag }}
+      run_test_suite: false
+    secrets: inherit
+    permissions:
+      contents: read
+      packages: read

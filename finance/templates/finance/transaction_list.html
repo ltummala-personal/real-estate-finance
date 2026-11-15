@@ -1,0 +1,21 @@
+{% extends "finance/base.html" %}
+{% block title %}Transactions - Project Finance{% endblock %}
+{% block content %}
+<h1>Transactions</h1>
+<section>
+  <form method="get" class="filters">
+    {% for field in filter_form %}<label>{{ field.label }}{{ field }}</label>{% endfor %}
+    <button type="submit">Filter</button>
+    <a class="button secondary" href="{% url 'transaction_list' %}">Clear</a>
+  </form>
+</section>
+<div class="cards" style="margin-top:1rem">
+  <div class="card"><div class="muted">Entries</div><p class="amount">{{ totals.count }}</p></div>
+  <div class="card"><div class="muted">Money in</div><p class="amount in">₹{{ totals.income|floatformat:2 }}</p></div>
+  <div class="card"><div class="muted">Money out</div><p class="amount out">₹{{ totals.expense|floatformat:2 }}</p></div>
+</div>
+<section>
+  {% include "finance/_transaction_table.html" with transactions=page.object_list %}
+  {% include "finance/_pagination.html" %}
+</section>
+{% endblock %}

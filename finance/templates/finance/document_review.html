@@ -1,0 +1,81 @@
+{% extends "finance/base.html" %}
+{% block title %}Review {{ document.original_name }} - Project Finance{% endblock %}
+{% block content %}
+<h1>{{ document.get_kind_display }}: {{ document.original_name }}</h1>
+<p class="muted">
+  Status: <span class="badge {% if document.status != 'completed' %}warn{% endif %}">{{ document.get_status_display }}</span>
+  · Account: {{ document.account.name|default:"—" }} · Project: {{ document.project|default:"—" }}
+  · <a href="{% url 'document_download' document.pk %}">Download original</a>
+</p>
+{% if document.error %}<ul class="messages"><li class="error">{{ document.error }}</li></ul>{% endif %}
+
+{% if formset.forms %}
+<section>
+  <h2>Review extracted entries ({{ formset.forms|length }} of {{ pending_total }} pending shown)</h2>
+  <p class="muted">Correct anything that was read wrongly, then approve. Rows flagged as possible duplicates match an existing transaction.</p>
+  <form method="post" class="actions">
+    {% csrf_token %}
+    <button type="submit" name="action" value="approve_all">Approve all complete, non-duplicate entries</button>
+    <button type="submit" name="action" value="reject_all" class="danger">Reject all pending</button>
+  </form>
+  <form method="post">
+    {% csrf_token %}
+    {{ formset.management_form }}
+    {% if formset.non_form_errors %}<div class="errorlist">{{ formset.non_form_errors }}</div>{% endif %}
+    <table>
+      <thead><tr><th>Decision</th><th>Date</th><th>In/out</th><th>Amount</th><th>Description</th><th>Vendor / payer</th><th>Reference</th><th>Category</th><th>Project</th></tr></thead>
+      <tbody>
+        {% for form in formset %}
+        <tr>
+          <td>{{ form.id }}{{ form.decision }}{% if form.instance.possible_duplicate %}<br><span class="badge warn">Possible duplicate</span>{% endif %}</td>
+          <td>{{ form.date }}{{ form.date.errors }}</td>
+          <td>{{ form.direction }}</td>
+          <td>{{ form.amount }}{{ form.amount.errors }}</td>
+          <td>{{ form.description }}{{ form.description.errors }}</td>
+          <td>{{ form.counterparty }}</td>
+          <td>{{ form.reference }}</td>
+          <td>{{ form.category }}</td>
+          <td>{{ form.project }}</td>
+        </tr>
+        {% if form.instance.notes or form.non_field_errors %}
+        <tr><td></td><td colspan="8" class="muted">{{ form.non_field_errors }}{{ form.instance.notes }}</td></tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="actions"><button type="submit">Save decisions</button></div>
+  </form>
+</section>
+{% elif document.status != 'failed' %}
+<section><p>All entries from this document have been reviewed.</p></section>
+{% endif %}
+
+{% if processed %}
+<section>
+  <h2>Reviewed entries</h2>
+  <table>
+    <thead><tr><th>Status</th><th>Date</th><th>Description</th><th>Vendor / payer</th><th class="num">Amount</th></tr></thead>
+    <tbody>
+      {% for entry in processed %}
+      <tr>
+        <td><span class="badge">{{ entry.get_status_display }}</span></td>
+        <td>{{ entry.date|date:"d M Y"|default:"—" }}</td>
+        <td>{{ entry.description }}</td>
+        <td>{{ entry.counterparty|default:"—" }}</td>
+        <td class="num {% if entry.direction == 'credit' %}in{% else %}out{% endif %}">{% if entry.amount %}₹{{ entry.amount|floatformat:2 }}{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{% if document.raw_text %}
+<section>
+  <details>
+    <summary>Text read from the document</summary>
+    <pre style="white-space:pre-wrap">{{ document.raw_text|truncatechars:20000 }}</pre>
+  </details>
+</section>
+{% endif %}
+{% endblock %}
